@@ -3,13 +3,11 @@
 [logo]:https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Phantom_Open_Emoji_1f419.svg/240px-Phantom_Open_Emoji_1f419.svg.png
 
 # Octopus RPC
-Super easy bi-directional RPCs, for Node JS & the browser, that just work !<br>
-Can be configured to handle an arbitrary mix of transports, including <b>socket.io, Node forked (child) processes, websockets</b>. 
-
-RPC Calls are namespaced ! ( ie <b><i>local:child:*</i></b> ) 
-<br>&amp; namespaces can be updated dynamically from either end of the transport. 
-
-In other words, RPC calls can be triggered on specific nodes, using [debug](https://github.com/visionmedia/debug) style filters ! 
+Super easy bi-directional RPCs, for Node JS & the browser, that just work !
+1. Can be configured to handle an arbitrary mix of transports, including <b>socket.io, Node forked (child) processes, websockets</b>. 
+2. RPC Calls are namespaced [debug](https://github.com/visionmedia/debug) style ! ( ie <b><i>local:child:*</i></b> ) 
+In other words, RPC calls can be triggered selectively on specific nodes ! 
+3. Namespaces can be updated dynamically from either end of the connection, at any time. For eg: based on locality & available memory ( cluster1:high:* cluster2:med:* cluster3:low:* ) 
 
 # Install
 ```
