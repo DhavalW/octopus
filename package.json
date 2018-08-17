@@ -1,7 +1,7 @@
 {
-  "name": "octopus",
+  "name": "octopus-rpc",
   "version": "0.1.0",
-  "description": "Adds RPC capabilities to any event emitter interface",
+  "description": "Super easy namespaced & bi-directional RPC over multiple transport types.",
   "main": "octopus.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
