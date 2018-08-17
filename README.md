@@ -38,7 +38,7 @@ rpc.over(child1, 'processRemote');
 rpc.over(child2, 'processRemote');
 ```
 #### 3. Add commands & setup rpc providers.
-providers are optional and are set across all transports added to a given RPC instance.
+providers are optional, &amp; are automatically set across all transports that were added to a given RPC instance.
 ```javascript
 var hello = rpc.command('hello');
 hello.provide((data, prev, transportName)=> {
