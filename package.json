@@ -1,8 +1,8 @@
 {
-  "name": "rpcjs",
+  "name": "octopus",
   "version": "0.0.1",
   "description": "Adds RPC capabilities to any event emitter interface",
-  "main": "rpc.js",
+  "main": "octopus.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -15,10 +15,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/DhavalW/rpcjs.git"
+    "url": "git+https://github.com/DhavalW/octopus.git"
   },
   "bugs": {
-    "url": "https://github.com/DhavalW/rpcjs/issues"
+    "url": "https://github.com/DhavalW/octopus/issues"
   },
-  "homepage": "https://github.com/DhavalW/rpcjs#readme"
+  "homepage": "https://github.com/DhavalW/octopus#readme"
 }

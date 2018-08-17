@@ -1,5 +1,5 @@
-const rpcBi = require('../rpc.js');
-var rpc = new rpcBi('local:child:child2');
+const octopus = require('../octopus.js');
+var rpc = new octopus('local:child:child2');
 
 rpc.over(process, 'processRemote');
 
