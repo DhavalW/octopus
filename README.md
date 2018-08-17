@@ -1,11 +1,15 @@
+![octopus image][logo]
+
+[logo]:https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Phantom_Open_Emoji_1f419.svg/240px-Phantom_Open_Emoji_1f419.svg.png
+
 # Octopus RPC
 Super easy bi-directional RPCs, for Node JS & the browser, that just work !<br>
 Can be configured to handle an arbitrary mix of transports, including <b>socket.io, Node forked (child) processes, websockets</b>. 
 
-RPC Calls are namespaced ! (ie <b><i>local:child:*</i></b> ) 
-<br>& namespaces can be updated dynamically from either end of the transport. 
+RPC Calls are namespaced ! ( ie <b><i>local:child:*</i></b> ) 
+<br>&amp; namespaces can be updated dynamically from either end of the transport. 
 
-In other words, RPC calls can be triggered only on select nodes, using debug style filters ! 
+In other words, RPC calls can be triggered on specific nodes, using [debug](https://github.com/visionmedia/debug) style filters ! 
 
 # Install
 ```
@@ -38,7 +42,8 @@ rpc.over(child1, 'processRemote');
 rpc.over(child2, 'processRemote');
 ```
 #### 3. Add commands & setup rpc providers.
-providers are optional, &amp; are automatically set across all transports that were added to a given RPC instance.
+providers are optional, 
+<br>&amp; are automatically set across all transports that were added to a given RPC instance.
 ```javascript
 var hello = rpc.command('hello');
 hello.provide((data, prev, transportName)=> {
