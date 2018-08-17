@@ -1,0 +1,24 @@
+{
+  "name": "rpcjs",
+  "version": "0.0.1",
+  "description": "Adds RPC capabilities to any event emitter interface",
+  "main": "rpc.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "rpc",
+    "javascript",
+    "multi-transport"
+  ],
+  "author": "DhavalW",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DhavalW/rpcjs.git"
+  },
+  "bugs": {
+    "url": "https://github.com/DhavalW/rpcjs/issues"
+  },
+  "homepage": "https://github.com/DhavalW/rpcjs#readme"
+}
