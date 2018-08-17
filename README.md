@@ -1,6 +1,22 @@
-# Octopus
-Super easy namespaced &amp; bi-directional RPCs, that just work !<br>
-Can be configured to handle an arbitrary mix of transports, including socket.io, child processes, websockets.
+# Octopus RPC
+Super easy bi-directional RPCs, for Node JS & the browser, that just work !<br>
+Can be configured to handle an arbitrary mix of transports, including <b>socket.io, Node forked (child) processes, websockets</b>. 
+
+RPC Calls are namespaced ! (ie <b><i>local:child:*</i></b> ) 
+<br>& namespaces can be updated dynamically from either end of the transport. 
+
+In other words, RPC calls can be triggered only on select nodes, using debug style filters ! 
+
+# Install
+```
+npm install octopus-rpc --save
+```
+
+# Demo
+See demo folder for an example - simple microservice style usage with node child process.
+
+1. Clone the repo
+2. Run demo/index.js using Node
 
 # Usage
 #### 1. Create a new RPC endpoint on each participating node 
@@ -29,7 +45,7 @@ hello.provide((data, prev, transportName)=> {
   // some action here
  });
 ```
-4. Call the RPCs with 'debug' like namespace filters !
+#### 4. Call the RPCs with 'debug' like namespace filters !
 
 ```javascript
 hello.call('local:*', 'aloha')
