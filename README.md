@@ -42,6 +42,12 @@ const child2 = fork('child2.js');
 rpc.over(child1, 'processRemote');
 rpc.over(child2, 'processRemote');
 ```
+Transport type | String identifier
+--- | ---
+child process | 'processRemote'
+Socket.io | 'socketio'
+Websocket | 'websocket'
+
 
 
 #### 3. Add commands & setup rpc providers.
