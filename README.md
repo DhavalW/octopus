@@ -53,7 +53,7 @@ Websocket | 'websocket'
 
 
 
-#### 3. Add commands & setup rpc providers.
+#### 3. Add RPC commands & providers.
 Providers are optional. 
 <br>They are automatically set up across all transports, previously added to the RPC instance.
 ```javascript
