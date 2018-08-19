@@ -8,6 +8,12 @@
 			onRecv: (fn) => socket.on('message', (data) => fn(data))
 		}
 	};
+	transportTypes['websocket'] = function (type, socket) {
+		return {
+			send: (data) => socket.send('message', data),
+			onRecv: (fn) => socket.on('message', (data) => fn(data))
+		}
+	};
 	transportTypes['processLocal'] = function (type, socket) {
 		return {
 			send: (data) => socket.emit('message', JSON.stringify(data)),
