@@ -10,6 +10,9 @@ Super easy bi-directional RPCs, for Node JS & the browser, that just work !
 <br> In other words, RPC calls can be triggered on selective nodes, with a simple namespace string ! 
 4. Namespaces can be set dynamically from either end of the connection, at any time. <br>For eg: based on locality & dynamic properties like available memory ( cluster1:high:* cluster2:med:* cluster3:low:* ) 
 
+# In use @ :
+[St8Flo](http://www.st8flo.com)
+
 # Install
 ```
 npm install octopus-rpc --save
