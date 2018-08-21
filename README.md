@@ -13,9 +13,11 @@ Super easy bi-directional RPCs, for Node JS & the browser, that just work !
 [St8Flo](http://www.st8flo.com)
 
 # Install
+Use below commmand for Node. Browserify can be used to bundle for the browser.
 ```
 npm install octopus-rpc --save
 ```
+
 
 # Demo
 See demo folder for an example - simple microservice style usage with node child process.
