@@ -12,7 +12,7 @@ const child2 = fork('child2.js');
 	the namespace can be updated later, from either side of the connection.
 	This can be used to dynamically route rpc calls, based on property values, included as part of the namespace.
 */
-var rpc = new octopus('local:parent:parent1');
+var rpc = octopus('local:parent:parent1');
 
 
 /*	STEP 2 - Add transports.

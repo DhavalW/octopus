@@ -1,5 +1,5 @@
 const octopus = require('../octopus.js');
-var rpc = new octopus('local:child:child2');
+var rpc = octopus('local:child:child2');
 
 rpc.over(process, 'processRemote');
 

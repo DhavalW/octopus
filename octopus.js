@@ -5,10 +5,26 @@
 
 	/* ----------------------------------------------------------- */
 
-	var rpc = function(name){
-		this.name = name;
-		this.incoming = new rpcEndpoint(name,'i');
-		this.outgoing = new rpcEndpoint(name,'o');
+	var rpcs = {};
+
+	var rpc = function(name, options){
+		options = options || {};
+		
+		if(options.create === true){
+			this.name = name;
+			this.commands = {};
+			this.incoming = new rpcEndpoint(name,'i');
+			this.outgoing = new rpcEndpoint(name,'o');
+
+			return this;
+		}
+
+		if(!rpcs[name]){
+			rpcs[name] = new rpc(name,{create:true});
+		}
+
+		return rpcs[name];
+
 	};
 	rpc.prototype.displayTransports = function(){
 		console.log('\n\n\n------ Transports for [%s] are:\n',this.name);
@@ -27,16 +43,19 @@
 		this.outgoing.pluginTransports(tObj);
 	};
 	rpc.prototype.command = function(name){
-		var iC = this.incoming.command(name);
-		var oC = this.outgoing.command(name);
-		return{
-			provide:function(fn){
-				return iC.provide(fn);
-			},
-			call:function(filter, data){
-				return oC.call(filter,data);
-			}
-		};
+		if(!this.commands[name]){
+			var iC = this.incoming.command(name);
+			var oC = this.outgoing.command(name);
+			this.commands[name] = {
+				provide:function(fn){
+					return iC.provide(fn);
+				},
+				call:function(filter, data){
+					return oC.call(filter,data);
+				}
+			};
+		}
+		return this.commands[name];
 	};
 	rpc.prototype.renameTo = function(newName){
 		this.incoming.rename(this.name).as(newName);
