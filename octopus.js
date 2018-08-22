@@ -65,12 +65,16 @@
 		this.outgoing.label = newName;
 		return this;
 	};
+	rpc.prototype.parseResponseData = function(inc){
+		return inc.filter(x=>x.type=="incoming").map(x=> x.response);
+	};
 	rpc.prototype.parseResponses = function(inc){
 		return inc.filter(x=>x.type=="incoming").map(x=>{return {name : x.name, response:x.response}; });
 	};
 	rpc.prototype.parseStatuses = function(inc){
 		return inc.filter(x=>x.type=="outgoing").map(x=>{return {name : x.name, status:x.status}; });
 	};
+
 
 
 	module.exports = rpc;
