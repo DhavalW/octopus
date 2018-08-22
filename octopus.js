@@ -69,10 +69,10 @@
 		return inc.filter(x=>x.type=="incoming").map(x=> x.response);
 	};
 	rpc.prototype.parseResponses = function(inc){
-		return inc.filter(x=>x.type=="incoming").map(x=>{return {name : x.name, response:x.response}; });
+		return inc.filter(x=>x.type=="incoming").map(x=>{return {transport : x.transport, command:x.command, response:x.response}; });
 	};
 	rpc.prototype.parseStatuses = function(inc){
-		return inc.filter(x=>x.type=="outgoing").map(x=>{return {name : x.name, status:x.status}; });
+		return inc.filter(x=>x.type=="outgoing").map(x=>{return {transport : x.transport, command:x.command, status:x.status}; });
 	};
 
 

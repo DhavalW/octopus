@@ -52,25 +52,29 @@
 							if (msgType == MSGTYPES.responseAccept)
 								res({
 									type: 'incoming',
-									name: tName,
+									transport: tName,
+									command:_self.name,
 									response: respData
 								});
 							else if (msgType == MSGTYPES.responseFail) {
 								rej({
 									type: 'incoming',
-									name: tName,
+									transport: tName,
+									command:_self.name,
 									response: respData
 								});
 							} else if (msgType == MSGTYPES.responseAcceptError) {
 								res({
 									type: 'incoming',
-									name: tName,
+									transport: tName,
+									command:_self.name,
 									response: new Error(respData)
 								});
 							} else if (msgType == MSGTYPES.responseFailError) {
 								rej({
 									type: 'incoming',
-									name: tName,
+									transport: tName,
+									command:_self.name,
 									response: new Error(respData)
 								});
 							}
@@ -92,7 +96,8 @@
 					.then((s) => {
 						return {
 							type: 'outgoing',
-							name: tName,
+							transport: tName,
+							command:_self.name,
 							status: s
 						};
 					}));
