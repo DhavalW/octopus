@@ -9,7 +9,7 @@
 
 	var rpc = function(name, options){
 		options = options || {};
-		
+
 		if(options.create === true){
 			this.name = name;
 			this.commands = {};
@@ -35,8 +35,10 @@
 		console.log('\n--------------------------\n\n');
 	}
 	rpc.prototype.over = function(socket, type){
-		this.outgoing.over(socket,type);
-		return this.incoming.over(socket,type).as(this.name);
+		var tasks = [];
+		tasks.push(this.incoming.over(socket,type).as(this.name).initPromise);
+		tasks.push(this.outgoing.over(socket,type).initPromise);
+		return Promise.all(tasks);
 	};
 	rpc.prototype.pluginTransports = function(tObj){
 		this.incoming.pluginTransports(tObj);

@@ -34,27 +34,8 @@ var rpc = octopus('local:parent:parent1');
 ```
 
 
-#### 2. Add transports<br>
-Transports are a standard, direct connection (socket), between 2 participating entities. (for eg: client to server socket).
-Currently supported transports are <b>socket.io, node forked (child) processes, websockets</b>.
-<br><br>Octopus expects a ready socket connection and does not handle connection/reconnections. That is left to the user to implement.
-```javascript
-const { fork } = require('child_process');
-const child1 = fork('child1.js');
-const child2 = fork('child2.js');
 
-rpc.over(child1, 'processRemote');
-rpc.over(child2, 'processRemote');
-```
-Transport type | String identifier
---- | ---
-child process | 'processRemote'
-Socket.io | 'socketio'
-Websocket | 'websocket'
-
-
-
-#### 3. Add RPC commands & providers.
+#### 2. Add RPC commands & providers.
 Providers are optional.
 <br>They are automatically set up across all transports, previously added to the RPC instance.
 ```javascript
@@ -64,13 +45,31 @@ hello.provide((data, prev, transportName)=> {
  });
 ```
 
-
-#### 4. Call the RPCs with 'debug' like namespace filters !
-
+#### 3. Add transports & call RPCs with 'debug' like namespace filters !<br>
+Transports are a standard, direct connection (socket), between 2 participating entities. (for eg: client to server socket).
+Currently supported transports are <b>socket.io, node forked (child) processes, websockets</b>.
+<br><br>Octopus expects a ready socket connection and does not handle connection/reconnections. That is left to the user to implement.
 ```javascript
-hello.call('local:*', 'aloha')
-  .then((res)=>console.log(res));
+const { fork } = require('child_process');
+const child1 = fork('child1.js');
+const child2 = fork('child2.js');
+
+var tasks = [];
+tasks.push(rpc.over(child1, 'processRemote'));
+tasks.push(rpc.over(child2, 'processRemote'));
+Promise.all(tasks)
+.then(()=>{
+	hello.call('local:*', 'aloha')
+	  .then((res)=>console.log(res));
+});
 ```
+Transport type | String identifier
+--- | ---
+child process | 'processRemote'
+Socket.io | 'socketio'
+Websocket | 'websocket'
+
+
 
 # Full example
 Copied from the demo folder
@@ -85,19 +84,18 @@ const child2 = fork('child2.js');
 
 var rpc = octopus('local:parent:parent1');
 
-rpc.over(child1, 'processRemote');
-rpc.over(child2, 'processRemote');
-
 var hello = rpc.command('hello');
 
 hello.provide(function (data, prev, transportName) {
 	return 'Parent :- Hey there ! ' + data.from;
 });
 
-// Timeout is provided to allow transports to synronize initially, before this rpc call,
-// otherwise, the filters might not pickup on yet-to-initalise transports on this call.
+var tasks = [];
+tasks.push(rpc.over(child1, 'processRemote'));
+tasks.push(rpc.over(child2, 'processRemote'));
 
-setTimeout(()=>{
+Promise.all(tasks)
+.then(()=>{
 
 	hello.call('local:child:child1',{from:'Parent'})
 		.then((resp) => console.log('\n\nGot "hello child:child1" response as :\n',JSON.stringify(rpc.parseResponses(resp),null,2)))
@@ -107,7 +105,8 @@ setTimeout(()=>{
 		.then((resp) => console.log('\n\nGot "hello child:child2" response as :\n',JSON.stringify(rpc.parseResponses(resp),null,2)))
 		.catch((e) => console.log('Got error as =', e));
 
-},1000);
+});
+
 ```
 #### child1.js
 ```javascript

@@ -15,20 +15,13 @@ const child2 = fork('child2.js');
 var rpc = octopus('local:parent:parent1');
 
 
-/*	STEP 2 - Add transports.
-	Tranports must be a single direct p2p link (for eg :- a single server-client socket connection)
-	of a supported transport type like websockets, socket.io, node child processes etc.
-*/
-rpc.over(child1, 'processRemote');
-rpc.over(child2, 'processRemote');
 
-
-/*	STEP 3 - Set up instances for each required command.	*/
+/*	STEP 2 - Set up instances for each required command.	*/
 var test = rpc.command('test');
 var hello = rpc.command('hello');
 
 
-/*	STEP 4 - Add providers to whichever command is serviced on this node */
+/*	STEP 3 - Add providers to whichever command is serviced on this node */
 test.provide(function (data, prev, transportName) {
 	return 'Parent-tested';
 });
@@ -37,14 +30,21 @@ hello.provide(function (data, prev, transportName) {
 	return 'Parent :- Hey there ! ' + data.from;
 });
 
-/*	STEP 5 - Call the rpc commands.
-	Remote rpc providers will execute, depending on the nodes filtered by the specified namespace string.
+/*	STEP 4 - Add transports & Call the rpc commands.
 
-	Timeout is provided to allow transports to synronize initially, before this rpc call,
-	otherwise, the filters might not pickup on yet-to-initalise transports on this call.
+	Tranports must be a single direct p2p link (for eg :- a single server-client socket connection)
+	of a supported transport type like websockets, socket.io, node child processes etc.
+
+	On adding, a promise is returned, which resolves when connections in both the directions have initialised.
+	Any RPC calls should happen after transports have initiliased, to include them within this call.  
 */
-setTimeout(()=>{
 
+var tasks = [];
+tasks.push(rpc.over(child1, 'processRemote'));
+tasks.push(rpc.over(child2, 'processRemote'));
+
+Promise.all(tasks)
+.then(()=>{
 	test.call('local:child:*')
 		.then((resp) => {
 			console.log('\n\nGot "test child:*" response as :\n');
@@ -69,4 +69,4 @@ setTimeout(()=>{
 	// TODO - rename doesn't work properly.
 	rpc.renameTo('local:parent:parent2');
 	setTimeout(()=>rpc.displayTransports(),1000);
-},1000);
+});
