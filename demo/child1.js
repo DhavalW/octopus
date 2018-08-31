@@ -12,6 +12,11 @@ hello.provide(function (data, prev, transportName) {
 	return 'child1 :- Hey there ! ' + data.from;
 });
 
+hello.onProvide(function(msg){
+	console.log('[Child1] Message recived by parent', msg);
+});
+
+
 rpc.over(process, 'processRemote');
 
 setTimeout(()=>rpc.displayTransports(),4000);

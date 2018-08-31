@@ -25,6 +25,13 @@
 	rpcEndpoint.prototype.over = function (socket, type) {
 		return new rpcTransport(type, socket, this);
 	};
+	rpcEndpoint.prototype.remove = function (socket) {
+		var _self = this;
+		Object.keys(_self.transports).forEach((tName)=>{
+			if(_self.transports[tName].socket === socket)
+				delete _self.transports[tName];
+		});
+	};
 
 	rpcEndpoint.prototype.rename = function (namespace) {
 		var _self = this;

@@ -30,13 +30,14 @@ hello.provide(function (data, prev, transportName) {
 	return 'Parent :- Hey there ! ' + data.from;
 });
 
+
 /*	STEP 4 - Add transports & Call the rpc commands.
 
 	Tranports must be a single direct p2p link (for eg :- a single server-client socket connection)
 	of a supported transport type like websockets, socket.io, node child processes etc.
 
 	On adding, a promise is returned, which resolves when connections in both the directions have initialised.
-	Any RPC calls should happen after transports have initiliased, to include them within this call.  
+	Any RPC calls should happen after transports have initiliased, to include them within this call.
 */
 
 var tasks = [];

@@ -22,6 +22,7 @@
 		this.endpoint = endpoint;
 		this.requestHandlers = [];
 		this.responseHandlers = {};
+		this.onProvideFn = null;
 		this.endpoint.commands[name] = this;
 
 		return this;
@@ -166,7 +167,7 @@
 							msg.respData = respData;
 						}
 						delete msg.reqData;
-						_self.send(tName, msg, 'respond');
+						return _self.send(tName, msg, 'respond');
 					})
 					.catch((e) => {
 						msg.respID = msg.msgID;
@@ -181,8 +182,9 @@
 							msg.respData = e;
 						}
 						delete msg.reqData;
-						_self.send(tName, msg, 'respond');
-					});
+						return _self.send(tName, msg, 'respond');
+					})
+					.then(()=> _self.onProvideFn? _self.onProvideFn(msg):null);
 
 			} else {
 				console.error('ERROR - No requestHandlers for command[%s] on [%s][%s] -  tName, msg - ', _self.name, _self.endpoint.label, _self.endpoint.dir, tName, msg);
@@ -195,7 +197,20 @@
 		if (typeof fn == "function")
 			return this.requestHandlers.push(fn) - 1;
 		else {
-			throw new Error('Param passed to "onCall" is not a function');
+			throw new Error('Param passed to "provide" is not a function');
+		}
+	};
+
+	/*
+		Executes passed fn when provide response is successfully recieved by remote.
+			Assuming transport send() function returns a promise on successfull
+			transfer of response message
+	*/
+	rpcCommand.prototype.onProvide = function (fn) {
+		if (typeof fn == "function")
+			this.onProvideFn = fn;
+		else {
+			throw new Error('Param passed to "onProvideFn" is not a function');
 		}
 	};
 

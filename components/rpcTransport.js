@@ -6,7 +6,7 @@
 		var _self = this;
 		_self.endpoint = endpoint;
 		_self.type = type;
-		_self.socket = socket;
+		_self.socket = socket;	// Also used for matching & removal, besides internal socket access.  
 		_self.tName = 'nonname';
 		_self.initialised = false;
 		_self.nameClock = 0;

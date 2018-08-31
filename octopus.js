@@ -33,13 +33,19 @@
 		console.log('\n\noutgoing:\n');
 		this.outgoing.displayTransports();
 		console.log('\n--------------------------\n\n');
-	}
+	};
+
 	rpc.prototype.over = function(socket, type){
 		var tasks = [];
 		tasks.push(this.incoming.over(socket,type).as(this.name).initPromise);
 		tasks.push(this.outgoing.over(socket,type).initPromise);
 		return Promise.all(tasks);
 	};
+	rpc.prototype.remove = function(socket){
+		this.incoming.remove(socket);
+		this.outgoing.remove(socket);
+	};
+
 	rpc.prototype.pluginTransports = function(tObj){
 		this.incoming.pluginTransports(tObj);
 		this.outgoing.pluginTransports(tObj);
@@ -51,6 +57,9 @@
 			this.commands[name] = {
 				provide:function(fn){
 					return iC.provide(fn);
+				},
+				onProvide:function(fn){
+					iC.onProvide(fn);
 				},
 				call:function(filter, data){
 					return oC.call(filter,data);
