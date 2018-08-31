@@ -1,17 +1,24 @@
-(function(){
+(function () {
 
 	var transportTypes = {};
 
 	transportTypes['socketio'] = function (type, socket) {
 		return {
-			send: (data) => socket.send('message', data),
-			onRecv: (fn) => socket.on('message', (data) => fn(data))
+			send: (data) => socket.send(JSON.stringify(data)),
+			onRecv: (fn) => socket.on('message', (data) => fn(JSON.parse(data)))
 		}
 	};
 	transportTypes['websocket'] = function (type, socket) {
 		return {
-			send: (data) => socket.send('message', data),
-			onRecv: (fn) => socket.on('message', (data) => fn(data))
+			send: (data) => {
+				return new Promise((res, rej) => {
+					socket.send(
+						JSON.stringify(data),
+						(e) => e ? rej(e) : res()
+					);
+				});
+			},
+			onRecv: (fn) => socket.on('message', (data) => fn(JSON.parse(data)))
 		}
 	};
 	transportTypes['processLocal'] = function (type, socket) {
