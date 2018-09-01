@@ -51,15 +51,22 @@
 		this.outgoing.pluginTransports(tObj);
 	};
 	rpc.prototype.command = function(name){
-		if(!this.commands[name]){
-			var iC = this.incoming.command(name);
-			var oC = this.outgoing.command(name);
-			this.commands[name] = {
+		var _self = this;
+		if(!_self.commands[name]){
+			var iC = _self.incoming.command(name);
+			var oC = _self.outgoing.command(name);
+			_self.commands[name] = {
 				provide:function(fn){
-					return iC.provide(fn);
+					iC.provide(fn);
+					return _self.commands[name];
+				},
+				unProvide:function(fn){
+					iC.unProvide(fn);
+					return _self.commands[name];
 				},
 				onProvide:function(fn){
 					iC.onProvide(fn);
+					return _self.commands[name];
 				},
 				call:function(filter, data){
 					return oC.call(filter,data);

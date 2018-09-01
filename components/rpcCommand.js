@@ -195,10 +195,17 @@
 
 	rpcCommand.prototype.provide = function (fn) {
 		if (typeof fn == "function")
-			return this.requestHandlers.push(fn) - 1;
+			this.requestHandlers.push(fn);
 		else {
 			throw new Error('Param passed to "provide" is not a function');
 		}
+	};
+
+	rpcCommand.prototype.unProvide = function (fn) {
+		var index = this.requestHandlers.findIndex((x)=> x === fn);
+		if(index > -1)
+			this.requestHandlers.splice(handlerIndex, 1);
+		return this;
 	};
 
 	/*
@@ -214,10 +221,7 @@
 		}
 	};
 
-	rpcCommand.prototype.remove = function (handlerIndex) {
-		this.requestHandlers.splice(handlerIndex, 1);
-		return this;
-	};
+
 
 	/* ----------------------------------------------------------- */
 
