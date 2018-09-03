@@ -12,6 +12,10 @@ test.provide(function (data, prev, tName) {
 // hello.provide(function (data, prev, tName) {
 // 	return 'child2 :- Hey there ! ' + data.from;
 // });
+//
+// hello.onProvide(function(msg){
+// 	console.log('[Child2] Replied back to parent as ', msg);
+// });
 
 rpc.over(process, 'processRemote');
 

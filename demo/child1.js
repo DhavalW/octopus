@@ -13,7 +13,7 @@ hello.provide(function (data, prev, transportName) {
 });
 
 hello.onProvide(function(msg){
-	console.log('[Child1] Message recived by parent', msg);
+	console.log('[Child1] Replied back to parent as', msg);
 });
 
 

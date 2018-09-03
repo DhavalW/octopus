@@ -43,7 +43,7 @@
 
 		Object.keys(_self.endpoint.transports)
 			.forEach((tName) => {
-				if (namespace.test(tName)) {
+				if (_self.endpoint.transports[tName].initialised === true && namespace.test(tName)) {
 
 					if (mode != 'respond') {
 						tasks.push((new Promise((res, rej) => {

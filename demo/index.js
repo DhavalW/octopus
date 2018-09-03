@@ -87,7 +87,7 @@ Promise.all(tasks)
 
 			.catch((e) => console.log('Unexpected error - ', e));
 
-		// TODO - rename doesn't work properly.
+		// TODO - rename doesn't work properly yet.
 		// rpc.renameTo('local:parent:parent2');
 		setTimeout(() => rpc.displayTransports(), 1000);
 	});

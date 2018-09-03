@@ -81,23 +81,22 @@
 		this.outgoing.label = newName;
 		return this;
 	};
-	// rpc.prototype.parseData = function(inc){
-	// 	return inc.map(x=> x.response);
-	// };
-	// rpc.prototype.parseResponseData = function(inc){
-	// 	return inc.filter(x=>x.type=="incoming").map(x=> x.response);
-	// };
-	// rpc.prototype.parseStatusData = function(inc){
-	// 	return inc.filter(x=>x.type=="outgoing").map(x=> x.response);
-	// };
-	// rpc.prototype.parseResponses = function(inc){
-	// 	return inc.filter(x=>x.type=="incoming");
-	// };
-	// rpc.prototype.parseStatuses = function(inc){
-	// 	return inc.filter(x=>x.type=="outgoing");
-	// };
 
-	
+	rpc.prototype.parseByStatus = function(res){
+		var valids = [], invalids = [], check;
+		for(var i=0; i<res.length; i++){
+			check = res[i];
+			if(check.sent === true && check.status === true)
+				valids.push(check);
+			else
+				invalids.push(check);
+		}
+		return {
+			valids:valids,
+			invalids:invalids
+		};
+	};
+
 
 
 
