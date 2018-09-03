@@ -1,6 +1,6 @@
 {
   "name": "octopus-rpc",
-  "version": "2.2.3",
+  "version": "2.3.0",
   "description": "Super easy namespaced & bi-directional RPC over multiple transport types.",
   "main": "octopus.js",
   "scripts": {
