@@ -97,11 +97,15 @@ tasks.push(rpc.over(child2, 'processRemote'));
 Promise.all(tasks)
 .then(()=>{
 
-	hello.call('local:child:child1',{from:'Parent'})
-		.then((resp) => console.log('\n\nGot "hello local:child:child1" response as :\n',resp)
+  hello.call('local:child:child1',{from:'Parent'})
+    .then((resp) => console.log('\n\nGot "hello local:child:child1" response as :\n',resp));
 
-	hello.call('local:child:child2',{from:'Parent'})
-		.then((resp) => console.log('\n\nGot "hello local:child:child2" response as :\n',resp)
+  hello.call('local:child:child2',{from:'Parent'})
+    .then((resp) => console.log('\n\nGot "hello local:child:child2" response as :\n',resp));
+    
+  hello.call('local:child:*',{from:'Parent'})
+    .then((resp) => console.log('\n\nGot "hello local:child:*" response as :\n',resp));
+
 
 });
 
