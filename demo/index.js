@@ -48,18 +48,10 @@ console.log('\n\n-----[index] Calling RPC test local:child:*" before setup------
 hello.call('local:child:*', { from: 'Parent' })
 	.then((resp) => {
 		console.log('\n\nGot raw "local:child:*" response as :\n', resp);
-		console.log('\nparseStatuses() - ', JSON.stringify(rpc.parseStatuses(resp), null, 2));
-		console.log('\nparseResponses() - ', JSON.stringify(rpc.parseResponses(resp), null, 2));
-		console.log('\nparseResponseData() - ', JSON.stringify(rpc.parseResponseData(resp), null, 2));
-		console.log('\nparseData() - ', JSON.stringify(rpc.parseData(resp), null, 2));
 		console.log('\n------------------\n\n');
 	})
 	.catch((e) => {
 		console.log('Got raw error as :\n', e);
-		console.log('\nparseStatuses() - ', JSON.stringify(rpc.parseStatuses(e), null, 2));
-		console.log('\nparseResponses() - ', JSON.stringify(rpc.parseResponses(e), null, 2));
-		console.log('\nparseResponseData() - ', JSON.stringify(rpc.parseResponseData(e), null, 2));
-		console.log('\nparseData() - ', JSON.stringify(rpc.parseData(e), null, 2));
 		console.log('\n------------------\n\n');
 	});
 
@@ -69,18 +61,6 @@ Promise.all(tasks)
 		test.call('local:child:*')
 			.then((resp) => {
 				console.log('\n\nGot "test child:*" raw response as :\n', resp);
-				console.log('\nparseStatuses() - ', JSON.stringify(rpc.parseStatuses(resp), null, 2));
-				console.log('\nparseResponses() - ', JSON.stringify(rpc.parseResponses(resp), null, 2));
-				console.log('\nparseResponseData() - ', JSON.stringify(rpc.parseResponseData(resp), null, 2));
-				console.log('\nparseData() - ', JSON.stringify(rpc.parseData(resp), null, 2));
-				console.log('\n------------------\n\n');
-			})
-			.catch((e) => {
-				console.log('Got raw error as :\n', e);
-				console.log('\nparseStatuses() - ', JSON.stringify(rpc.parseStatuses(e), null, 2));
-				console.log('\nparseResponses() - ', JSON.stringify(rpc.parseResponses(e), null, 2));
-				console.log('\nparseResponseData() - ', JSON.stringify(rpc.parseResponseData(e), null, 2));
-				console.log('\nparseData() - ', JSON.stringify(rpc.parseData(e), null, 2));
 				console.log('\n------------------\n\n');
 			})
 
@@ -88,19 +68,26 @@ Promise.all(tasks)
 			.then(() => hello.call('local:child:child1', { from: 'Parent' }))
 			.then((resp) => {
 				console.log('\n\nGot "hello child:child1" response as :\n');
-				console.log(JSON.stringify(rpc.parseResponses(resp), null, 2));
+				console.log(JSON.stringify(resp, null, 2));
 			})
-			.catch((e) => console.log('Got "hello child:child1" error as =', e))
 
 			.then(() => console.log('\n\n-----[index] Calling RPC "hello local:child:child2" after setup--------\n\n'))
 			.then(() => hello.call('local:child:child2', { from: 'Parent' }))
 			.then((resp) => {
 				console.log('\n\nGot "hello child:child2" response as :\n');
-				console.log(JSON.stringify(rpc.parseResponses(resp), null, 2));
+				console.log(JSON.stringify(resp, null, 2));
 			})
-			.catch((e) => console.log('Got "hello child:child2" error as =', e));
+
+			.then(() => console.log('\n\n-----[index] Calling RPC "hello local:child:*" after setup--------\n\n'))
+			.then(() => hello.call('local:child:*', { from: 'Parent' }))
+			.then((resp) => {
+				console.log('\n\nGot "hello child:*" response as :\n');
+				console.log(JSON.stringify(resp, null, 2));
+			})
+
+			.catch((e) => console.log('Unexpected error - ', e));
 
 		// TODO - rename doesn't work properly.
-		rpc.renameTo('local:parent:parent2');
+		// rpc.renameTo('local:parent:parent2');
 		setTimeout(() => rpc.displayTransports(), 1000);
 	});

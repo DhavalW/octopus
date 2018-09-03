@@ -6,7 +6,7 @@
 		var _self = this;
 		_self.endpoint = endpoint;
 		_self.type = type;
-		_self.socket = socket;	// Also used for matching & removal, besides internal socket access.  
+		_self.socket = socket;	// Also used for matching & removal, besides internal socket access.
 		_self.tName = 'nonname';
 		_self.initialised = false;
 		_self.nameClock = 0;
@@ -32,7 +32,7 @@
 								 	consequence - a name swap, instead of consensus on a single name value.
 						*/
 						if (data.rpc_tName_change.force || data.rpc_tName_change.clock >= _self.nameClock) {
-							console.log('[%s, clock %s] [%s] Changing name of transport [%s] to [%s] at clock =', _self.endpoint.label, _self.nameClock, data.rpc_tName_change.force ? 'forced' : '', _self.tName, data.rpc_tName_change.tName, data.rpc_tName_change.clock);
+							// console.log('[%s, clock %s] [%s] Changing name of transport [%s] to [%s] at clock =', _self.endpoint.label, _self.nameClock, data.rpc_tName_change.force ? 'forced' : '', _self.tName, data.rpc_tName_change.tName, data.rpc_tName_change.clock);
 							delete _self.endpoint.transports[_self.tName];
 							_self.tName = data.rpc_tName_change.tName;
 							_self.nameClock = data.rpc_tName_change.clock;
@@ -42,7 +42,7 @@
 								res();
 							}
 						} else {
-							console.log('[%s, clock %s] [%s] Rejecting name change of transport [%s] as [%s] at clock =',_self.endpoint.label,_self.nameClock,data.rpc_tName_change.force?'forced':'', _self.tName,data.rpc_tName_change.tName,data.rpc_tName_change.clock);
+							// console.log('[%s, clock %s] [%s] Rejecting name change of transport [%s] as [%s] at clock =',_self.endpoint.label,_self.nameClock,data.rpc_tName_change.force?'forced':'', _self.tName,data.rpc_tName_change.tName,data.rpc_tName_change.clock);
 							_self.send({
 								rpc_tName_change: {
 									tName: _self.tName,

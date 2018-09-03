@@ -98,12 +98,10 @@ Promise.all(tasks)
 .then(()=>{
 
 	hello.call('local:child:child1',{from:'Parent'})
-		.then((resp) => console.log('\n\nGot "hello child:child1" response as :\n',JSON.stringify(rpc.parseResponses(resp),null,2)))
-		.catch((e) => console.log('Got error as =', e));
+		.then((resp) => console.log('\n\nGot "hello local:child:child1" response as :\n',resp)
 
 	hello.call('local:child:child2',{from:'Parent'})
-		.then((resp) => console.log('\n\nGot "hello child:child2" response as :\n',JSON.stringify(rpc.parseResponses(resp),null,2)))
-		.catch((e) => console.log('Got error as =', e));
+		.then((resp) => console.log('\n\nGot "hello local:child:child2" response as :\n',resp)
 
 });
 
