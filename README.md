@@ -39,6 +39,9 @@ var rpc = octopus('local:parent:parent1');
 Providers are optional.
 <br>They are automatically set up across all transports, previously added to the RPC instance.
 ```javascript
+const octopus = require('octopus-rpc');
+var rpc = octopus('local:parent:parent1');
+
 var hello = rpc.command('hello');
 hello.provide((data, prev, transportName)=> {
   // some action here
@@ -50,6 +53,14 @@ Transports are a standard, direct connection (socket), between 2 participating e
 Currently supported transports are <b>socket.io, node forked (child) processes, websockets</b>.
 <br><br>Octopus expects a ready socket connection and does not handle connection/reconnections. That is left to the user to implement.
 ```javascript
+const octopus = require('octopus-rpc');
+var rpc = octopus('local:parent:parent1');
+
+var hello = rpc.command('hello');
+hello.provide((data, prev, transportName)=> {
+  // some action here
+ });
+ 
 const { fork } = require('child_process');
 const child1 = fork('child1.js');
 const child2 = fork('child2.js');
@@ -57,10 +68,11 @@ const child2 = fork('child2.js');
 var tasks = [];
 tasks.push(rpc.over(child1, 'processRemote'));
 tasks.push(rpc.over(child2, 'processRemote'));
+
 Promise.all(tasks)
 .then(()=>{
-	hello.call('local:*', 'aloha')
-	  .then((res)=>console.log(res));
+  hello.call('local:*', 'aloha')
+    .then((res)=>console.log(res));
 });
 ```
 Transport type | String identifier
@@ -87,7 +99,7 @@ var rpc = octopus('local:parent:parent1');
 var hello = rpc.command('hello');
 
 hello.provide(function (data, prev, transportName) {
-	return 'Parent :- Hey there ! ' + data.from;
+  return 'Parent :- Hey there ! ' + data.from;
 });
 
 var tasks = [];
@@ -119,7 +131,7 @@ rpc.over(process, 'processRemote');
 var hello = rpc.command('hello');
 
 hello.provide(function (data, prev, transportName) {
-	return 'child1 :- Hey there ! ' + data.from;
+  return 'child1 :- Hey there ! ' + data.from;
 });
 ```
 #### child2.js
@@ -131,6 +143,6 @@ rpc.over(process, 'processRemote');
 var hello = rpc.command('hello');
 
 hello.provide(function (data, prev, transportName) {
-	return 'child2 :- Hey there ! ' + data.from;
+  return 'child2 :- Hey there ! ' + data.from;
 });
 ```
