@@ -82,6 +82,9 @@
 		return this;
 	};
 
+
+	/* ----------------  Result parsing & Resolving to Promise resolve/reject -----------*/
+
 	rpc.prototype.parseByStatus = function(res){
 		var valids = [], invalids = [], check;
 		for(var i=0; i<res.length; i++){
@@ -95,6 +98,31 @@
 			valids:valids,
 			invalids:invalids
 		};
+	};
+
+	rpc.prototype.resolve = function(p){
+		if(p.sent === true && p.status ===true)
+			return Promise.resolve(p.response);
+		else
+			return Promise.reject(p.response);
+	};
+	rpc.prototype.resolveAll = function(p){
+
+		for(var i=0; i<p.length; i++){
+			if(p[i].sent === false || p[i].status === false)
+				return Promise.reject(p);
+		}
+
+		return Promise.resolve(p);
+	};
+	rpc.prototype.resolveAtLeastOne = function(p){
+
+		for(var i=0; i<p.length; i++){
+			if(p[i].sent === true && p[i].status === true)
+				return Promise.resolve(p);
+		}
+
+		return Promise.reject(p);
 	};
 
 
