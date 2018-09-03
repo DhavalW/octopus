@@ -99,7 +99,7 @@
 							type: 'outgoing',
 							transport: tName,
 							command:_self.name,
-							status: s
+							response: s
 						};
 					}));
 			}
@@ -108,7 +108,12 @@
 		if (tasks.length > 0)
 			return Promise.all(tasks);
 		else
-			return Promise.reject('no transports added');
+			return Promise.reject([{
+				type: 'outgoing',
+				transport: '',
+				command:_self.name,
+				response: 'no transports added'
+			}]);
 	};
 
 	rpcCommand.prototype.call = function (namespaceString, data) {
@@ -184,7 +189,10 @@
 						delete msg.reqData;
 						return _self.send(tName, msg, 'respond');
 					})
-					.then(()=> _self.onProvideFn? _self.onProvideFn(msg):null);
+					.then(()=> _self.onProvideFn? _self.onProvideFn(msg.respData, tName, msg):null)
+					.catch((e)=> {
+						console.log('Unexpected Error while executing onProvide function - ', e);
+					});
 
 			} else {
 				console.error('ERROR - No requestHandlers for command[%s] on [%s][%s] -  tName, msg - ', _self.name, _self.endpoint.label, _self.endpoint.dir, tName, msg);

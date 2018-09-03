@@ -44,30 +44,63 @@ var tasks = [];
 tasks.push(rpc.over(child1, 'processRemote'));
 tasks.push(rpc.over(child2, 'processRemote'));
 
+console.log('\n\n-----[index] Calling RPC test local:child:*" before setup--------\n\n');
+hello.call('local:child:*', { from: 'Parent' })
+	.then((resp) => {
+		console.log('\n\nGot raw "local:child:*" response as :\n', resp);
+		console.log('\nparseStatuses() - ', JSON.stringify(rpc.parseStatuses(resp), null, 2));
+		console.log('\nparseResponses() - ', JSON.stringify(rpc.parseResponses(resp), null, 2));
+		console.log('\nparseResponseData() - ', JSON.stringify(rpc.parseResponseData(resp), null, 2));
+		console.log('\nparseData() - ', JSON.stringify(rpc.parseData(resp), null, 2));
+		console.log('\n------------------\n\n');
+	})
+	.catch((e) => {
+		console.log('Got raw error as :\n', e);
+		console.log('\nparseStatuses() - ', JSON.stringify(rpc.parseStatuses(e), null, 2));
+		console.log('\nparseResponses() - ', JSON.stringify(rpc.parseResponses(e), null, 2));
+		console.log('\nparseResponseData() - ', JSON.stringify(rpc.parseResponseData(e), null, 2));
+		console.log('\nparseData() - ', JSON.stringify(rpc.parseData(e), null, 2));
+		console.log('\n------------------\n\n');
+	});
+
 Promise.all(tasks)
-.then(()=>{
-	test.call('local:child:*')
-		.then((resp) => {
-			console.log('\n\nGot "test child:*" response as :\n');
-			console.log(JSON.stringify(rpc.parseResponses(resp),null,2));
-		})
-		.catch((e) => console.log('Got error as =', e));
+	.then(() => {
+		console.log('\n\n-----[index] Calling RPC "test local:child:*" after setup--------\n\n');
+		test.call('local:child:*')
+			.then((resp) => {
+				console.log('\n\nGot "test child:*" raw response as :\n', resp);
+				console.log('\nparseStatuses() - ', JSON.stringify(rpc.parseStatuses(resp), null, 2));
+				console.log('\nparseResponses() - ', JSON.stringify(rpc.parseResponses(resp), null, 2));
+				console.log('\nparseResponseData() - ', JSON.stringify(rpc.parseResponseData(resp), null, 2));
+				console.log('\nparseData() - ', JSON.stringify(rpc.parseData(resp), null, 2));
+				console.log('\n------------------\n\n');
+			})
+			.catch((e) => {
+				console.log('Got raw error as :\n', e);
+				console.log('\nparseStatuses() - ', JSON.stringify(rpc.parseStatuses(e), null, 2));
+				console.log('\nparseResponses() - ', JSON.stringify(rpc.parseResponses(e), null, 2));
+				console.log('\nparseResponseData() - ', JSON.stringify(rpc.parseResponseData(e), null, 2));
+				console.log('\nparseData() - ', JSON.stringify(rpc.parseData(e), null, 2));
+				console.log('\n------------------\n\n');
+			})
 
-	hello.call('local:child:child1',{from:'Parent'})
-		.then((resp) => {
-			console.log('\n\nGot "hello child:child1" response as :\n');
-			console.log(JSON.stringify(rpc.parseResponses(resp),null,2));
-		})
-		.catch((e) => console.log('Got error as =', e));
+			.then(() => console.log('\n\n-----[index] Calling RPC "hello local:child:child1" after setup--------\n\n'))
+			.then(() => hello.call('local:child:child1', { from: 'Parent' }))
+			.then((resp) => {
+				console.log('\n\nGot "hello child:child1" response as :\n');
+				console.log(JSON.stringify(rpc.parseResponses(resp), null, 2));
+			})
+			.catch((e) => console.log('Got "hello child:child1" error as =', e))
 
-	hello.call('local:child:child2',{from:'Parent'})
-		.then((resp) => {
-			console.log('\n\nGot "hello child:child2" response as :\n');
-			console.log(JSON.stringify(rpc.parseResponses(resp),null,2));
-		})
-		.catch((e) => console.log('Got error as =', e));
+			.then(() => console.log('\n\n-----[index] Calling RPC "hello local:child:child2" after setup--------\n\n'))
+			.then(() => hello.call('local:child:child2', { from: 'Parent' }))
+			.then((resp) => {
+				console.log('\n\nGot "hello child:child2" response as :\n');
+				console.log(JSON.stringify(rpc.parseResponses(resp), null, 2));
+			})
+			.catch((e) => console.log('Got "hello child:child2" error as =', e));
 
-	// TODO - rename doesn't work properly.
-	rpc.renameTo('local:parent:parent2');
-	setTimeout(()=>rpc.displayTransports(),1000);
-});
+		// TODO - rename doesn't work properly.
+		rpc.renameTo('local:parent:parent2');
+		setTimeout(() => rpc.displayTransports(), 1000);
+	});
