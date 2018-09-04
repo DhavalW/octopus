@@ -170,6 +170,8 @@
 				// console.log('\n[%s]Request handlers found\n ',_self.requestHandlers.length);
 
 				var chain = Promise.resolve();
+				var reqData = msg.reqData;
+
 				_self.requestHandlers.forEach((h) => {
 					chain = chain.then((e) => h(msg.reqData, e, tName));
 				});
@@ -196,7 +198,7 @@
 						delete msg.reqData;
 						return _self.send(tName, msg, 'respond');
 					})
-					.then(() => _self.onProvideFn ? _self.onProvideFn(msg.respData, tName, msg) : null)
+					.then(() => _self.onProvideFn ? _self.onProvideFn(reqData, msg.respData, tName, msg) : null)
 					.catch((e) => {
 						console.error('Unexpected Error while executing onProvide function - ', e);
 					});

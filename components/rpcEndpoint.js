@@ -51,9 +51,9 @@
 
 	rpcEndpoint.prototype.displayTransports = function () {
 		var _self = this;
-		console.log('key\t\t\t\tname\t\t\t\ttype');
+		console.log('key\t\t\t\tname\t\t\ttype\t\tinitalised');
 		Object.keys(_self.transports).forEach((tKey) => {
-			console.log('%s\t\t%s\t\t%s', tKey, _self.transports[tKey].tName, _self.transports[tKey].type);
+			console.log('%s\t\t%s\t\t%s\t\t%s', tKey, _self.transports[tKey].tName, _self.transports[tKey].type,_self.transports[tKey].initialised);
 		});
 	};
 	rpcEndpoint.prototype.command = function (name) {
