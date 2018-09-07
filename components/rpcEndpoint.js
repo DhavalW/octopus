@@ -18,7 +18,7 @@
 		this.commands = {};
 		this.transportTypes = rpcStockTransports;
 
-		this.logger.enabled && this.logger.log('Created new endpoint as ', this);
+		this.logger.enabled && this.logger.log('Created new endpoint as [%s][%s]', l,dir);
 
 		return this;
 	};
@@ -54,13 +54,15 @@
 		}
 	};
 
-	rpcEndpoint.prototype.displayTransports = function () {
+	rpcEndpoint.prototype.displayString = function () {
 		var _self = this;
-		console.log('key\t\t\t\tname\t\t\ttype\t\tinitalised');
+		var logString = 'key\t\t\t\tname\t\t\ttype:id\t\tinitalised\n';
 		Object.keys(_self.transports).forEach((tKey) => {
-			console.log('%s\t\t%s\t\t%s\t\t%s', tKey, _self.transports[tKey].tName, _self.transports[tKey].type,_self.transports[tKey].initialised);
+			logString+=`${tKey}\t\t${_self.transports[tKey].tName}\t\t${_self.transports[tKey].type +':'+_self.transports[tKey].id}\t\t${_self.transports[tKey].initialised}\n`;
 		});
+		return logString;
 	};
+
 	rpcEndpoint.prototype.command = function (name) {
 		return new rpcCommand(name, this, {logger:this.logger});
 	};

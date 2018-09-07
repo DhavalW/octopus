@@ -36,12 +36,27 @@ module.exports = function (debug) {
 
 	};
 	rpc.prototype.displayTransports = function () {
-		console.log('\n\n\n------ Transports for [%s] are:\n', this.name);
-		console.log('incoming:\n');
-		this.incoming.displayTransports();
-		console.log('\n\noutgoing:\n');
-		this.outgoing.displayTransports();
-		console.log('\n--------------------------\n\n');
+		// console.log('\n\n\n------ Transports for [%s] are:\n', this.name);
+		// console.log('incoming:\n');
+		// this.incoming.displayTransports();
+		// console.log('\n\noutgoing:\n');
+		// this.outgoing.displayTransports();
+		// console.log('\n--------------------------\n\n');
+
+		var logString = `
+
+---------------- Transports for [${this.name}] are : -----------------------
+
+Incoming:
+
+`;
+
+		logString += this.incoming.displayString();
+		logString +=`\n\n-------------\nOutgoing:\n\n`;
+		logString += this.outgoing.displayString();
+		logString +='\n\n----------------------------------------------------------------------------';
+
+		console.log(logString);
 	};
 
 	rpc.prototype.over = function (socket, type) {
