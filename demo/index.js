@@ -3,7 +3,9 @@
 	1 Parent with 2 children processes communicate over RPC.
 */
 const { fork } = require('child_process');
-const octopus = require('../octopus.js');
+const debug = require('debug');
+debug.enable('*');
+const octopus = require('../octopus.js')(debug);
 const child1 = fork('child1.js');
 const child2 = fork('child2.js');
 
@@ -12,7 +14,7 @@ const child2 = fork('child2.js');
 	the namespace can be updated later, from either side of the connection.
 	This can be used to dynamically route rpc calls, based on property values, included as part of the namespace.
 */
-var rpc = octopus('local:parent:parent1');
+var rpc = octopus('parent:parent1');
 
 
 
@@ -44,42 +46,42 @@ var tasks = [];
 tasks.push(rpc.over(child1, 'processRemote'));
 tasks.push(rpc.over(child2, 'processRemote'));
 
-console.log('\n\n-----[index] Calling RPC test local:child:*" before setup--------\n\n');
-hello.call('local:child:*', { from: 'Parent' })
+console.log('\n\n-----[index] Calling RPC test child:*" before setup--------\n\n');
+hello.call('child:*', { from: 'Parent' })
 	.then((resp) => {
-		console.log('\n\nGot raw "local:child:*" response as :\n', resp);
+		console.log('\n\nGot raw "child:*" response as :\n', resp);
 		console.log(JSON.stringify(rpc.parseByStatus(resp), null, 2));
 		console.log('\n------------------\n\n');
 	});
 
 Promise.all(tasks)
 	.then(() => {
-		console.log('\n\n-----[index] Calling RPC "test local:child:*" after setup--------\n\n');
-		test.call('local:child:*')
+		console.log('\n\n-----[index] Calling RPC "test child:*" after setup--------\n\n');
+		test.call('child:*')
 			.then((resp) => {
 				console.log('\n\nGot "test child:*" raw response as :\n', resp);
 				console.log(JSON.stringify(rpc.parseByStatus(resp), null, 2));
 				console.log('\n------------------\n\n');
 			})
 
-			.then(() => console.log('\n\n-----[index] Calling RPC "hello local:child:child1" after setup--------\n\n'))
-			.then(() => hello.call('local:child:child1', { from: 'Parent' }))
+			.then(() => console.log('\n\n-----[index] Calling RPC "hello child:child1" after setup--------\n\n'))
+			.then(() => hello.call('child:child1', { from: 'Parent' }))
 			.then((resp) => {
 				console.log('\n\nGot "hello child:child1" response as :\n');
 				console.log(JSON.stringify(resp, null, 2));
 				console.log(JSON.stringify(rpc.parseByStatus(resp), null, 2));
 			})
 
-			.then(() => console.log('\n\n-----[index] Calling RPC "hello local:child:child2" after setup--------\n\n'))
-			.then(() => hello.call('local:child:child2', { from: 'Parent' }))
+			.then(() => console.log('\n\n-----[index] Calling RPC "hello child:child2" after setup--------\n\n'))
+			.then(() => hello.call('child:child2', { from: 'Parent' }))
 			.then((resp) => {
 				console.log('\n\nGot "hello child:child2" response as :\n');
 				console.log(JSON.stringify(resp, null, 2));
 				console.log(JSON.stringify(rpc.parseByStatus(resp), null, 2));
 			})
 
-			.then(() => console.log('\n\n-----[index] Calling RPC "hello local:child:*" after setup--------\n\n'))
-			.then(() => hello.call('local:child:*', { from: 'Parent' }))
+			.then(() => console.log('\n\n-----[index] Calling RPC "hello child:*" after setup--------\n\n'))
+			.then(() => hello.call('child:*', { from: 'Parent' }))
 			.then((resp) => {
 				console.log('\n\nGot "hello child:*" response as :\n');
 				console.log(JSON.stringify(resp, null, 2));

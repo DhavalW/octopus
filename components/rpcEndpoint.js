@@ -4,16 +4,21 @@
 	const rpcStockTransports = require('./stockTransports.js');
 	const rpcTransport = require('./rpcTransport.js');
 	const rpcCommand = require('./rpcCommand.js');
-
 	/* ----------------------------------------------------------- */
 
 
-	var rpcEndpoint = function (l, dir) {
+	var rpcEndpoint = function (l, dir, options) {
+		options = options || {};
+		this.logger = options.logger.child(dir == 'i'?'EP:in':'EP:out');
+
+
 		this.transports = {};
 		this.label = l;
 		this.dir = dir;
 		this.commands = {};
 		this.transportTypes = rpcStockTransports;
+
+		this.logger.enabled && this.logger.log('Created new endpoint as ', this);
 
 		return this;
 	};
@@ -23,7 +28,7 @@
 	};
 
 	rpcEndpoint.prototype.over = function (socket, type) {
-		return new rpcTransport(type, socket, this);
+		return new rpcTransport(type, socket, this, {logger:this.logger});
 	};
 	rpcEndpoint.prototype.remove = function (socket) {
 		var _self = this;
@@ -57,7 +62,7 @@
 		});
 	};
 	rpcEndpoint.prototype.command = function (name) {
-		return new rpcCommand(name, this);
+		return new rpcCommand(name, this, {logger:this.logger});
 	};
 
 

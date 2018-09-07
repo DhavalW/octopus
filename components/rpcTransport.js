@@ -1,9 +1,17 @@
 (function () {
+	var idCount = 0;
+	var autoID = function(){
+		return ++idCount;
+	};
 
-	var rpcTransport = function (type, socket, endpoint) {
+	var rpcTransport = function (type, socket, endpoint, options) {
 		// console.log('Creating rpc transport [%s] for endpoint [%s][%s]',type, endpoint.label, endpoint.dir);
-
+		options = options || {};
 		var _self = this;
+
+		_self.id = autoID();
+		_self.logger = options.logger.child('T:'+type+':'+_self.id);
+
 		_self.endpoint = endpoint;
 		_self.type = type;
 		_self.socket = socket;	// Also used for matching & removal, besides internal socket access.
@@ -32,7 +40,7 @@
 								 	consequence - a name swap, instead of consensus on a single name value.
 						*/
 						if (data.rpc_tName_change.force || data.rpc_tName_change.clock >= _self.nameClock) {
-							// console.log('[%s, clock %s] [%s] Changing name of transport [%s] to [%s] at clock =', _self.endpoint.label, _self.nameClock, data.rpc_tName_change.force ? 'forced' : '', _self.tName, data.rpc_tName_change.tName, data.rpc_tName_change.clock);
+							_self.logger.enabled && _self.logger.log('[%s, clock %s] [%s] Changing name of transport [%s][%s] to [%s] at clock =', _self.endpoint.label, _self.nameClock, data.rpc_tName_change.force ? 'forced' : '', _self.tName,_self.id, data.rpc_tName_change.tName, data.rpc_tName_change.clock);
 							delete _self.endpoint.transports[_self.tName];
 							_self.tName = data.rpc_tName_change.tName;
 							_self.nameClock = data.rpc_tName_change.clock;
@@ -42,7 +50,7 @@
 								res();
 							}
 						} else {
-							// console.log('[%s, clock %s] [%s] Rejecting name change of transport [%s] as [%s] at clock =',_self.endpoint.label,_self.nameClock,data.rpc_tName_change.force?'forced':'', _self.tName,data.rpc_tName_change.tName,data.rpc_tName_change.clock);
+							_self.logger.enabled && _self.logger.log('[%s, clock %s] [%s] Rejecting name change of transport [%s][%s] as [%s] at clock =',_self.endpoint.label,_self.nameClock,data.rpc_tName_change.force?'forced':'', _self.tName,_self.id, data.rpc_tName_change.tName,data.rpc_tName_change.clock);
 							_self.send({
 								rpc_tName_change: {
 									tName: _self.tName,
@@ -68,7 +76,7 @@
 				var prevName = _self.tName;
 				_self.tName = tName;
 				_self.nameClock++;
-				// console.log('[%s] Sending namechange of transport [%s] to [%s] at clock =',_self.endpoint.label, prevName,tName,_self.nameClock);
+				_self.logger.enabled && _self.logger.log('[%s] Sending namechange of transport [%s][%s] to [%s] at clock =',_self.endpoint.label, prevName,tName,_self.id, _self.nameClock);
 				_self.send({
 					rpc_tName_change: {
 						tName: _self.tName,
@@ -86,6 +94,7 @@
 		});
 
 		_self.endpoint.transports[_self.tName] = _self;
+		_self.logger.enabled && _self.logger.log('Added transport [%s][%s] for endpoint [%s][%s]',type,_self.id, endpoint.label, endpoint.dir);
 		return _self;
 	};
 

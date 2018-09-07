@@ -1,5 +1,6 @@
-const octopus = require('../octopus.js');
-var rpc = octopus('local:child:child2');
+const debug = require('debug');
+const octopus = require('../octopus.js')(debug);
+var rpc = octopus('child:child2');
 
 
 var test = rpc.command('test');

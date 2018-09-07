@@ -16,7 +16,8 @@
 	};
 
 
-	var rpcCommand = function (name, endpoint) {
+	var rpcCommand = function (name, endpoint, options) {
+		options = options || {};
 		// console.log('Creating rpc command [%s] for endpoint [%s][%s]',name, endpoint.label, endpoint.dir);
 		this.name = name;
 		this.endpoint = endpoint;
@@ -25,6 +26,10 @@
 		this.onProvideFn = null;
 		this.endpoint.commands[name] = this;
 
+		this.logger = options.logger.child('CMD:'+this.name);
+		this.sendLogger = this.logger.child('send');
+		this.recvLogger = this.logger.child('recv');
+		this.logger.enabled && this.logger.log('Created new command as ', name);
 		return this;
 	};
 
@@ -52,7 +57,7 @@
 
 							// handler function
 							var handler = function (respData, msgType) {
-								// console.log('\n\nResponse handler called with respData & msgTypes as \n',respData, msgType);
+								_self.sendLogger.enabled && _self.sendLogger.log('\n\nResponse handler called with respData & msgTypes as \n',respData, msgType);
 
 								delete _self.responseHandlers[tName][msg.msgID];
 
@@ -94,7 +99,7 @@
 							};
 							container.rpc_msg[_self.name] = msg;
 
-							// console.log('\n\n\nSending %s to [%s] as \n',mode =='respond'?'response':'request', tName, container);
+							_self.sendLogger.enabled && _self.sendLogger.log('\n\n\nSending %s to [%s] as \n',mode =='respond'?'response':'request', tName, container);
 							Promise.resolve(_self.endpoint.transports[tName].send(container))
 								.then((s) => sent = true)
 								.catch((e) => {
@@ -111,7 +116,7 @@
 						};
 						container.rpc_msg[_self.name] = msg;
 
-						// console.log('\n\n\nSending %s to [%s] as \n',mode =='respond'?'response':'request', tName, container);
+						_self.sendLogger.enabled && _self.sendLogger.log('\n\n\nSending %s to [%s] as \n',mode =='respond'?'response':'request', tName, container);
 						return Promise.resolve(_self.endpoint.transports[tName].send(container));
 
 					}
@@ -140,7 +145,7 @@
 		};
 
 
-		// console.log('Requesting RPC with msg = ', msg);
+		_self.sendLogger.enabled && _self.sendLogger.log('Requesting RPC with msg = ', msg);
 		return _self.send(namespaceString, msg);
 
 	};
@@ -149,7 +154,7 @@
 	rpcCommand.prototype.recieve = function (msg, tName) {
 		var _self = this;
 
-		// console.log('\n\n\nCommand [%s] Data recvd on [%s][%s] as \n',_self.name, _self.endpoint.label,_self.endpoint.dir,tName, msg);
+		_self.recvLogger.enabled && _self.recvLogger.log('\n\n\nCommand [%s] Data recvd on [%s][%s] as \n',_self.name, _self.endpoint.label,_self.endpoint.dir,tName, msg);
 
 		switch (msg.msgType) {
 		case MSGTYPES.responseAccept:
