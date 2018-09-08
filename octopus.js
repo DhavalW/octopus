@@ -21,7 +21,6 @@ module.exports = function (debug) {
 			this.incoming = new rpcEndpoint(name, 'i', { logger: this.logger});
 			this.outgoing = new rpcEndpoint(name, 'o', { logger: this.logger});
 
-			this.MESSAGETYPES = this.incoming.MESSAGETYPES || this.outgoing.MESSAGETYPES;
 			this.logger.enabled && this.logger.log('Created new Octopus RPC as ', this.name);
 			return this;
 		}
@@ -82,6 +81,8 @@ Incoming (provides):
 		if (!_self.commands[name]) {
 			var iC = _self.incoming.command(name);
 			var oC = _self.outgoing.command(name);
+			_self.MESSAGETYPES = ic.MESSAGETYPES || oC.MESSAGETYPES;
+
 			_self.commands[name] = {
 				provide: function (fn) {
 					iC.provide(fn);

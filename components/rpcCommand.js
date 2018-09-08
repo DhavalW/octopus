@@ -7,7 +7,7 @@
 	/* ----------------------------------------------------------- */
 
 
-	const MSGTYPES = {
+	const MESSAGETYPES = {
 		request: 'RQ',
 		responseAccept: 'RA',
 		responseFail: 'RF',
@@ -31,7 +31,7 @@
 		this.recvLogger = this.logger.child('recv');
 		this.logger.enabled && this.logger.log('Created new command as ', name);
 
-		this.MESSAGETYPES = MSGTYPES;
+		this.MESSAGETYPES = MESSAGETYPES;
 		return this;
 	};
 
@@ -59,7 +59,7 @@
 
 					switch (msgType) {
 
-					case MSGTYPES.responseAccept:
+					case MESSAGETYPES.responseAccept:
 						res({
 							sent: sent,
 							status: true,
@@ -69,7 +69,7 @@
 						});
 						break;
 
-					case MSGTYPES.responseFail:
+					case MESSAGETYPES.responseFail:
 						res({
 							sent: sent,
 							status: false,
@@ -100,7 +100,7 @@
 					.then((s) => sent = true)
 					.catch((e) => {
 						sent = false;
-						handler(e, MSGTYPES.responseFail);
+						handler(e, MESSAGETYPES.responseFail);
 					});
 
 			});
@@ -126,7 +126,7 @@
 
 		var msg = {
 			msgID: _self.autoID(),
-			msgType: MSGTYPES.request,
+			msgType: MESSAGETYPES.request,
 			reqData: data,
 		};
 
@@ -158,7 +158,7 @@
 	//
 	// 	var msg = {
 	// 		msgID: _self.autoID(),
-	// 		msgType: MSGTYPES.request,
+	// 		msgType: MESSAGETYPES.request,
 	// 		reqData: data,
 	// 	};
 	//
@@ -176,8 +176,8 @@
 		_self.recvLogger.enabled && _self.recvLogger.log('\n\n\nCommand [%s] Data recvd on [%s][%s] as \n',_self.name, _self.endpoint.label,_self.endpoint.dir,tName, msg);
 
 		switch (msg.msgType) {
-		case MSGTYPES.responseAccept:
-		case MSGTYPES.responseFail:
+		case MESSAGETYPES.responseAccept:
+		case MESSAGETYPES.responseFail:
 			// console.log('\n\n\nResponse recvd on [%s] from [%s] as\n ',tName, msg.rtName, msg);
 			if (_self.responseHandlers[tid] && _self.responseHandlers[tid][msg.respID]) {
 				// console.log('handler found. Responding !');
@@ -187,7 +187,7 @@
 			}
 			break;
 
-		case MSGTYPES.request:
+		case MESSAGETYPES.request:
 			// console .log('\n\nRequest recvd on [%s] as\n ',tName,msg);
 
 			if (_self.requestHandlers.length > 0) {
@@ -206,7 +206,7 @@
 						msg.respID = msg.msgID;
 						msg.rtName = tName;
 						msg.msgID = _self.autoID();
-						msg.msgType = MSGTYPES.responseAccept;
+						msg.msgType = MESSAGETYPES.responseAccept;
 						msg.respData = respData;
 						delete msg.reqData;
 						return _self.sendToID(tid, msg, 'respond');
@@ -217,7 +217,7 @@
 						msg.respID = msg.msgID;
 						msg.rtName = tName;
 						msg.msgID = _self.autoID();
-						msg.msgType = MSGTYPES.responseFail;
+						msg.msgType = MESSAGETYPES.responseFail;
 						msg.respData = e;
 						delete msg.reqData;
 						return _self.sendToID(tid, msg, 'respond');
@@ -232,7 +232,7 @@
 				msg.respID = msg.msgID;
 				msg.rtName = tName;
 				msg.msgID = _self.autoID();
-				msg.msgType = MSGTYPES.responseFail;
+				msg.msgType = MESSAGETYPES.responseFail;
 				msg.respData = 'no providers';
 				delete msg.reqData;
 				return _self.sendToID(tid, msg, 'respond');
