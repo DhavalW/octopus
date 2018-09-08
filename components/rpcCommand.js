@@ -30,6 +30,8 @@
 		this.sendLogger = this.logger.child('send');
 		this.recvLogger = this.logger.child('recv');
 		this.logger.enabled && this.logger.log('Created new command as ', name);
+
+		this.MESSAGETYPES = MSGTYPES;
 		return this;
 	};
 
