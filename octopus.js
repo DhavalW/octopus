@@ -45,16 +45,16 @@ module.exports = function (debug) {
 
 		var logString = `
 
----------------- Transports for [${this.name}] are : -----------------------
+-------------------- TRANSPORTS for [${this.name}] are : ---------------------------
 
-Incoming:
+Incoming (provides):
 
 `;
 
 		logString += this.incoming.displayString();
-		logString +=`\n\n-------------\nOutgoing:\n\n`;
+		logString +=`\n\n-------------\nOutgoing (calls):\n\n`;
 		logString += this.outgoing.displayString();
-		logString +='\n\n----------------------------------------------------------------------------';
+		logString +='\n\n------------------------------------------------------------------------------------\n\n';
 
 		console.log(logString);
 	};
@@ -96,6 +96,7 @@ Incoming:
 					return _self.commands[name];
 				},
 				call: function (filter, data) {
+					_self.displayTransports();
 					return oC.call(filter, data);
 				}
 			};
@@ -106,7 +107,7 @@ Incoming:
 		this.incoming.rename(this.name)
 			.as(newName);
 		this.name = newName;
-		this.outgoing.label = newName;
+		// this.outgoing.label = newName;
 		return this;
 	};
 

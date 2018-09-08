@@ -4,7 +4,8 @@
 */
 const { fork } = require('child_process');
 const debug = require('debug');
-debug.enable('*');
+// debug.enable('logs:octopus:parent:*, warnings:octopus:parent:*, errors:octopus:parent:*');
+// debug.enable('*');
 const octopus = require('../octopus.js')(debug);
 const child1 = fork('child1.js');
 const child2 = fork('child2.js');
@@ -60,6 +61,7 @@ Promise.all(tasks)
 		test.call('child:*')
 			.then((resp) => {
 				console.log('\n\nGot "test child:*" raw response as :\n', resp);
+				console.log('\nParsed as :\n');
 				console.log(JSON.stringify(rpc.parseByStatus(resp), null, 2));
 				console.log('\n------------------\n\n');
 			})
@@ -69,6 +71,7 @@ Promise.all(tasks)
 			.then((resp) => {
 				console.log('\n\nGot "hello child:child1" response as :\n');
 				console.log(JSON.stringify(resp, null, 2));
+				console.log('\nParsed as :\n');
 				console.log(JSON.stringify(rpc.parseByStatus(resp), null, 2));
 			})
 
@@ -77,6 +80,7 @@ Promise.all(tasks)
 			.then((resp) => {
 				console.log('\n\nGot "hello child:child2" response as :\n');
 				console.log(JSON.stringify(resp, null, 2));
+				console.log('\nParsed as :\n');
 				console.log(JSON.stringify(rpc.parseByStatus(resp), null, 2));
 			})
 
@@ -85,6 +89,7 @@ Promise.all(tasks)
 			.then((resp) => {
 				console.log('\n\nGot "hello child:*" response as :\n');
 				console.log(JSON.stringify(resp, null, 2));
+				console.log('\nParsed as :\n');
 				console.log(JSON.stringify(rpc.parseByStatus(resp), null, 2));
 			})
 

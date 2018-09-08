@@ -35,91 +35,107 @@
 
 
 	rpcCommand.prototype.autoID = function () {
-		return Math.random()
-			.toString()
-			.substr(8) + '-' + Date.now();
+		return Math.random().toString().substr(8) + '-' + Date.now();
 	};
 
-
-	rpcCommand.prototype.send = function (namespace, msg, mode) {
+	rpcCommand.prototype.sendToID = function(tid, msg, mode){
 		var _self = this;
+		var tName = _self.endpoint.transports[tid].tName;
+		_self.sendLogger.enabled && _self.sendLogger.log('Sending on transport [%s][%s], mode = %s,  msg =', tid,tName,mode,msg);
+
+		if (!mode || mode != 'respond') {
+
+			return new Promise((res, rej) => {
+
+				var sent = false;
+
+				// handler function
+				var handler = function (respData, msgType) {
+					_self.sendLogger.enabled && _self.sendLogger.log('\n\nResponse handler called with respData & msgTypes as \n',respData, msgType);
+
+					delete _self.responseHandlers[tid][msg.msgID];
+
+					switch (msgType) {
+
+					case MSGTYPES.responseAccept:
+						res({
+							sent: sent,
+							status: true,
+							transport: tName,
+							command: _self.name,
+							response: respData
+						});
+						break;
+
+					case MSGTYPES.responseFail:
+						res({
+							sent: sent,
+							status: false,
+							transport: tName,
+							command: _self.name,
+							response: respData
+						});
+						break;
+					}
+
+				};
+
+
+				if (!_self.responseHandlers[tid])
+					_self.responseHandlers[tid] = {};
+
+				_self.responseHandlers[tid][msg.msgID] = handler;
+
+
+				var container = {
+					rpc_msg: {},
+					rpc_dir: _self.endpoint.dir
+				};
+				container.rpc_msg[_self.name] = msg;
+
+				_self.sendLogger.enabled && _self.sendLogger.log('\n\n\nSending %s to [%s] as \n',mode =='respond'?'response':'request', tName, container);
+				Promise.resolve(_self.endpoint.transports[tid].send(container))
+					.then((s) => sent = true)
+					.catch((e) => {
+						sent = false;
+						handler(e, MSGTYPES.responseFail);
+					});
+
+			});
+		}
+		else{
+
+			var container = {
+				rpc_msg: {},
+				rpc_dir: _self.endpoint.dir
+			};
+			container.rpc_msg[_self.name] = msg;
+
+			_self.sendLogger.enabled && _self.sendLogger.log('\n\n\nSending %s to [%s] as \n',mode =='respond'?'response':'request', tName, container);
+			return Promise.resolve(_self.endpoint.transports[tid].send(container));
+		}
+	};
+
+	rpcCommand.prototype.call = function (namespace, data, mode) {
+		var _self = this;
+		var tName;
 		namespace = new Namespace(namespace);
 		var tasks = [];
 
+		var msg = {
+			msgID: _self.autoID(),
+			msgType: MSGTYPES.request,
+			reqData: data,
+		};
+
 		Object.keys(_self.endpoint.transports)
-			.forEach((tName) => {
-				if (_self.endpoint.transports[tName].initialised === true && namespace.test(tName)) {
+			.forEach(function(tid){
+				_self.sendLogger.enabled && _self.sendLogger.log('Scanning for namespace on transport [%s] as \n', tid);
 
-					if (mode != 'respond') {
-						tasks.push((new Promise((res, rej) => {
-
-							var sent = false;
-
-							// handler function
-							var handler = function (respData, msgType) {
-								_self.sendLogger.enabled && _self.sendLogger.log('\n\nResponse handler called with respData & msgTypes as \n',respData, msgType);
-
-								delete _self.responseHandlers[tName][msg.msgID];
-
-								switch (msgType) {
-
-								case MSGTYPES.responseAccept:
-									res({
-										sent: sent,
-										status: true,
-										transport: tName,
-										command: _self.name,
-										response: respData
-									});
-									break;
-
-								case MSGTYPES.responseFail:
-									res({
-										sent: sent,
-										status: false,
-										transport: tName,
-										command: _self.name,
-										response: respData
-									});
-									break;
-								}
-
-							};
-
-
-							if (!_self.responseHandlers[tName])
-								_self.responseHandlers[tName] = {};
-
-							_self.responseHandlers[tName][msg.msgID] = handler;
-
-
-							var container = {
-								rpc_msg: {},
-								rpc_dir: _self.endpoint.dir
-							};
-							container.rpc_msg[_self.name] = msg;
-
-							_self.sendLogger.enabled && _self.sendLogger.log('\n\n\nSending %s to [%s] as \n',mode =='respond'?'response':'request', tName, container);
-							Promise.resolve(_self.endpoint.transports[tName].send(container))
-								.then((s) => sent = true)
-								.catch((e) => {
-									sent = false;
-									handler(e, MSGTYPES.responseFail);
-								});
-
-						})));
-					}
-					else{
-						var container = {
-							rpc_msg: {},
-							rpc_dir: _self.endpoint.dir
-						};
-						container.rpc_msg[_self.name] = msg;
-
-						_self.sendLogger.enabled && _self.sendLogger.log('\n\n\nSending %s to [%s] as \n',mode =='respond'?'response':'request', tName, container);
-						return Promise.resolve(_self.endpoint.transports[tName].send(container));
-
-					}
+				tName = _self.endpoint.transports[tid].tName;
+				if (_self.endpoint.transports[tid].initialised === true && namespace.test(tName)) {
+					_self.sendLogger.enabled && _self.sendLogger.log('Transport [%s] is valid. Attempting to send', tid);
+					tasks.push(_self.sendToID(tid, msg, mode));
 				}
 			});
 
@@ -135,24 +151,25 @@
 			}]);
 	};
 
-	rpcCommand.prototype.call = function (namespaceString, data) {
+	// rpcCommand.prototype.call = function (namespaceString, data) {
+	// 	var _self = this;
+	//
+	// 	var msg = {
+	// 		msgID: _self.autoID(),
+	// 		msgType: MSGTYPES.request,
+	// 		reqData: data,
+	// 	};
+	//
+	//
+	// 	_self.sendLogger.enabled && _self.sendLogger.log('Requesting RPC with msg = ', msg);
+	// 	return _self.send(namespaceString, msg);
+	//
+	// };
+
+
+	rpcCommand.prototype.recieve = function (msg, transport) {
 		var _self = this;
-
-		var msg = {
-			msgID: _self.autoID(),
-			msgType: MSGTYPES.request,
-			reqData: data,
-		};
-
-
-		_self.sendLogger.enabled && _self.sendLogger.log('Requesting RPC with msg = ', msg);
-		return _self.send(namespaceString, msg);
-
-	};
-
-
-	rpcCommand.prototype.recieve = function (msg, tName) {
-		var _self = this;
+		var tName = transport.tName, tid = transport.id;
 
 		_self.recvLogger.enabled && _self.recvLogger.log('\n\n\nCommand [%s] Data recvd on [%s][%s] as \n',_self.name, _self.endpoint.label,_self.endpoint.dir,tName, msg);
 
@@ -160,16 +177,16 @@
 		case MSGTYPES.responseAccept:
 		case MSGTYPES.responseFail:
 			// console.log('\n\n\nResponse recvd on [%s] from [%s] as\n ',tName, msg.rtName, msg);
-			if (_self.responseHandlers[msg.rtName] && _self.responseHandlers[msg.rtName][msg.respID]) {
+			if (_self.responseHandlers[tid] && _self.responseHandlers[tid][msg.respID]) {
 				// console.log('handler found. Responding !');
-				_self.responseHandlers[msg.rtName][msg.respID](msg.respData, msg.msgType);
+				_self.responseHandlers[tid][msg.respID](msg.respData, msg.msgType);
 			} else {
 				// console.log('handler not found');
 			}
 			break;
 
 		case MSGTYPES.request:
-			// console.log('\n\nRequest recvd on [%s] as\n ',tName,msg);
+			// console .log('\n\nRequest recvd on [%s] as\n ',tName,msg);
 
 			if (_self.requestHandlers.length > 0) {
 				// console.log('\n[%s]Request handlers found\n ',_self.requestHandlers.length);
@@ -190,7 +207,7 @@
 						msg.msgType = MSGTYPES.responseAccept;
 						msg.respData = respData;
 						delete msg.reqData;
-						return _self.send(tName, msg, 'respond');
+						return _self.sendToID(tid, msg, 'respond');
 					})
 					.catch((e) => {
 						// console.log('\nRequest handlers FAILED\n Results are',e);
@@ -201,7 +218,7 @@
 						msg.msgType = MSGTYPES.responseFail;
 						msg.respData = e;
 						delete msg.reqData;
-						return _self.send(tName, msg, 'respond');
+						return _self.sendToID(tid, msg, 'respond');
 					})
 					.then(() => _self.onProvideFn ? _self.onProvideFn(reqData, msg.respData, tName, msg) : null)
 					.catch((e) => {
@@ -209,14 +226,14 @@
 					});
 
 			} else {
-				// console.error('ERROR - No requestHandlers for command[%s] on [%s][%s] -  tName, msg - ', _self.name, _self.endpoint.label, _self.endpoint.dir, tName, msg);
+				// _self.recvLogger.enabled && _self.recvLogger.error('ERROR - No requestHandlers for command[%s] on [%s][%s] -  tName, msg - ', _self.name, _self.endpoint.label, _self.endpoint.dir, tName, msg);
 				msg.respID = msg.msgID;
 				msg.rtName = tName;
 				msg.msgID = _self.autoID();
 				msg.msgType = MSGTYPES.responseFail;
 				msg.respData = 'no providers';
 				delete msg.reqData;
-				return _self.send(tName, msg, 'respond');
+				return _self.sendToID(tid, msg, 'respond');
 
 			}
 			break;

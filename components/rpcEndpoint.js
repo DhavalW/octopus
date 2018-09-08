@@ -32,9 +32,9 @@
 	};
 	rpcEndpoint.prototype.remove = function (socket) {
 		var _self = this;
-		Object.keys(_self.transports).forEach((tName)=>{
-			if(_self.transports[tName].socket === socket)
-				delete _self.transports[tName];
+		Object.keys(_self.transports).forEach((tid)=>{
+			if(_self.transports[tid].socket === socket)
+				delete _self.transports[tid];
 		});
 	};
 
@@ -56,7 +56,7 @@
 
 	rpcEndpoint.prototype.displayString = function () {
 		var _self = this;
-		var logString = 'key\t\t\t\tname\t\t\ttype:id\t\tinitalised\n';
+		var logString = 'key\t\t\tname\t\t\ttype:id\t\t\tinitalised\n';
 		Object.keys(_self.transports).forEach((tKey) => {
 			logString+=`${tKey}\t\t${_self.transports[tKey].tName}\t\t${_self.transports[tKey].type +':'+_self.transports[tKey].id}\t\t${_self.transports[tKey].initialised}\n`;
 		});

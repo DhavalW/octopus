@@ -1,7 +1,7 @@
 (function () {
 	var idCount = 0;
 	var autoID = function(){
-		return ++idCount;
+		return 'T'+ (++idCount);
 	};
 
 	var rpcTransport = function (type, socket, endpoint, options) {
@@ -41,10 +41,10 @@
 						*/
 						if (data.rpc_tName_change.force || data.rpc_tName_change.clock >= _self.nameClock) {
 							_self.logger.enabled && _self.logger.log('[%s, clock %s] [%s] Changing name of transport [%s][%s] to [%s] at clock =', _self.endpoint.label, _self.nameClock, data.rpc_tName_change.force ? 'forced' : '', _self.tName,_self.id, data.rpc_tName_change.tName, data.rpc_tName_change.clock);
-							delete _self.endpoint.transports[_self.tName];
+							// delete _self.endpoint.transports[_self.tName];
 							_self.tName = data.rpc_tName_change.tName;
 							_self.nameClock = data.rpc_tName_change.clock;
-							_self.endpoint.transports[_self.tName] = _self;
+							// _self.endpoint.transports[_self.tName] = _self;
 							if(!_self.initialised) {
 								_self.initialised = true;
 								res();
@@ -65,14 +65,14 @@
 					if (data.rpc_msg) {
 						Object.keys(data.rpc_msg).forEach((cKey) => {
 							if (_self.endpoint.commands[cKey])
-								_self.endpoint.commands[cKey].recieve(data.rpc_msg[cKey], _self.tName);
+								_self.endpoint.commands[cKey].recieve(data.rpc_msg[cKey], _self);
 						});
 					}
 				}
 			});
 
 			_self.as = function (tName) {
-				delete _self.endpoint.transports[_self.tName];
+				// delete _self.endpoint.transports[_self.tName];
 				var prevName = _self.tName;
 				_self.tName = tName;
 				_self.nameClock++;
@@ -84,7 +84,7 @@
 					},
 					rpc_dir: _self.endpoint.dir
 				});
-				_self.endpoint.transports[tName] = _self;
+				// _self.endpoint.transports[tName] = _self;
 				if(!_self.initialised) {
 					_self.initialised = true;
 					res();
@@ -93,7 +93,7 @@
 			};
 		});
 
-		_self.endpoint.transports[_self.tName] = _self;
+		_self.endpoint.transports[_self.id] = _self;
 		_self.logger.enabled && _self.logger.log('Added transport [%s][%s] for endpoint [%s][%s]',type,_self.id, endpoint.label, endpoint.dir);
 		return _self;
 	};
