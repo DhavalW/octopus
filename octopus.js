@@ -97,7 +97,7 @@ Incoming (provides):
 					return _self.commands[name];
 				},
 				call: function (filter, data) {
-					_self.displayTransports();
+					// _self.displayTransports();
 					return oC.call(filter, data);
 				}
 			};

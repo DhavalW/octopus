@@ -43,6 +43,7 @@
 	rpcCommand.prototype.sendToID = function(tid, msg, mode){
 		var _self = this;
 		var tName = _self.endpoint.transports[tid].tName;
+		msg.source = _self.endpoint.label;
 		_self.sendLogger.enabled && _self.sendLogger.log('Sending on transport [%s][%s], mode = %s,  msg =', tid,tName,mode,msg);
 
 		if (!mode || mode != 'respond') {
@@ -188,7 +189,7 @@
 			break;
 
 		case MESSAGETYPES.request:
-			// console .log('\n\nRequest recvd on [%s] as\n ',tName,msg);
+			// console .log('\n\nCommand[%s] Request recvd on [%s] as\n ',_self.name, tName,msg);
 
 			if (_self.requestHandlers.length > 0) {
 				// console.log('\n[%s]Request handlers found\n ',_self.requestHandlers.length);
@@ -197,7 +198,13 @@
 				var reqData = msg.reqData;
 
 				_self.requestHandlers.forEach((h) => {
-					chain = chain.then((e) => h(msg.reqData, e, tName));
+					/* Each handler is called with (v,p,l,s) as follows
+						v	= reqData 	- data sent by caller,
+						p	= prev		- response got from the prevhandler's execution for this call,
+						l	= tName 		- name of current transport (TODO - buggy, points to local transport name)
+						s 	= msg.tName 	- name of the calling transport (this was the actual usecase for tName ?)
+					*/
+					chain = chain.then((prev) => h(msg.reqData, prev, tName, msg.tName));
 				});
 				return chain
 					.then((respData) => {
