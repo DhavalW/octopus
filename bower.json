@@ -1,0 +1,22 @@
+{
+  "name": "octopus-rpc",
+  "description": "Super easy namespaced & bi-directional RPC over multiple transport types.",
+  "main": "dist/octopus.js",
+  "authors": [
+    "DhavalW"
+  ],
+  "license": "MIT",
+  "keywords": [
+    "rpc",
+    "javascript",
+    "multi-transport"
+  ],
+  "homepage": "",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
