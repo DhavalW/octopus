@@ -1,4 +1,4 @@
-(function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
+(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.octopus = f()}})(function(){var define,module,exports;return (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 (function () {
 
 	/* ------
@@ -118,6 +118,7 @@
 	rpcCommand.prototype.sendToID = function(tid, msg, mode){
 		var _self = this;
 		var tName = _self.endpoint.transports[tid].tName;
+		msg.source = _self.endpoint.label;
 		_self.sendLogger.enabled && _self.sendLogger.log('Sending on transport [%s][%s], mode = %s,  msg =', tid,tName,mode,msg);
 
 		if (!mode || mode != 'respond') {
@@ -263,7 +264,7 @@
 			break;
 
 		case MESSAGETYPES.request:
-			// console .log('\n\nRequest recvd on [%s] as\n ',tName,msg);
+			// console .log('\n\nCommand[%s] Request recvd on [%s] as\n ',_self.name, tName,msg);
 
 			if (_self.requestHandlers.length > 0) {
 				// console.log('\n[%s]Request handlers found\n ',_self.requestHandlers.length);
@@ -272,7 +273,13 @@
 				var reqData = msg.reqData;
 
 				_self.requestHandlers.forEach((h) => {
-					chain = chain.then((e) => h(msg.reqData, e, tName));
+					/* Each handler is called with (v,p,l,s) as follows
+						v	= reqData 	- data sent by caller,
+						p	= prev		- response got from the prevhandler's execution for this call,
+						l	= tName 		- name of current transport (TODO - buggy, points to local transport name)
+						s 	= msg.tName 	- name of the calling transport (this was the actual usecase for tName ?)
+					*/
+					chain = chain.then((prev) => h(msg.reqData, prev, tName, msg.tName));
 				});
 				return chain
 					.then((respData) => {
@@ -729,7 +736,7 @@ Incoming (provides):
 					return _self.commands[name];
 				},
 				call: function (filter, data) {
-					_self.displayTransports();
+					// _self.displayTransports();
 					return oC.call(filter, data);
 				}
 			};
@@ -796,6 +803,7 @@ Incoming (provides):
 
 };
 
-},{"./components/namespace.js":1,"./components/rpcEndpoint.js":3,"debug-pest":6}]},{},[7])
+},{"./components/namespace.js":1,"./components/rpcEndpoint.js":3,"debug-pest":6}]},{},[7])(7)
+});
 
 //# sourceMappingURL=octopus.js.map

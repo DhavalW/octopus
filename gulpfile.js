@@ -12,7 +12,8 @@ var assign = require('lodash.assign');
 // add custom browserify options here
 var customOpts = {
 	entries: ['./octopus.js'],
-	debug: true
+	debug: true,
+	standalone:'octopus'
 };
 var opts = assign({}, watchify.args, customOpts);
 var b = watchify(browserify(opts));
@@ -35,5 +36,5 @@ function bundle() {
 		.pipe(sourcemaps.init({ loadMaps: true })) // loads map from browserify file
 		// Add transformation tasks to the pipeline here.
 		.pipe(sourcemaps.write('./')) // writes .map file
-		.pipe(gulp.dest('./bundle'));
+		.pipe(gulp.dest('./dist'));
 }
