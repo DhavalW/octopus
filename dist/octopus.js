@@ -388,7 +388,7 @@
 	};
 
 	rpcEndpoint.prototype.pluginTransports = function (tColl) {
-		this.transportTypes = Object.assign(transportTypes, tColl);
+		this.transportTypes = Object.assign(this.transportTypes, tColl);
 	};
 
 	rpcEndpoint.prototype.over = function (socket, type) {
