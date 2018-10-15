@@ -145,10 +145,10 @@
 				_self.sendLogger.enabled && _self.sendLogger.log('Scanning for namespace on transport [%s] as \n', tid);
 
 				tName = _self.endpoint.transports[tid].tName;
-				if (evaluate === true)
-					msg.reqData = data(_self.endpoint.transports[tid].tName, index);
 
 				if (_self.endpoint.transports[tid].initialised === true && namespace.test(tName)) {
+					if (evaluate === true)
+						msg.reqData = data(_self.endpoint.transports[tid].tName, index);
 					_self.sendLogger.enabled && _self.sendLogger.log('Transport [%s] is valid. Attempting to send', tid);
 					tasks.push(_self.sendToID(tid, msg, mode));
 				}
