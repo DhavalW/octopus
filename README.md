@@ -60,7 +60,7 @@ var hello = rpc.command('hello');
 hello.provide((data, prev, transportName)=> {
   // some action here
  });
- 
+
 const { fork } = require('child_process');
 const child1 = fork('child1.js');
 const child2 = fork('child2.js');
@@ -109,12 +109,14 @@ tasks.push(rpc.over(child2, 'processRemote'));
 Promise.all(tasks)
 .then(()=>{
 
+// Data passed to a call can be a value, or a function. If function, it is evaluated for every transport that matches the filter, and the return value of the function is used as data.
+
   hello.call('local:child:child1',{from:'Parent'})
     .then((resp) => console.log('\n\nGot "hello local:child:child1" response as :\n',resp));
 
   hello.call('local:child:child2',{from:'Parent'})
     .then((resp) => console.log('\n\nGot "hello local:child:child2" response as :\n',resp));
-    
+
   hello.call('local:child:*',{from:'Parent'})
     .then((resp) => console.log('\n\nGot "hello local:child:*" response as :\n',resp));
 

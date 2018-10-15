@@ -55,6 +55,7 @@ hello.call('child:*', { from: 'Parent' })
 		console.log('\n------------------\n\n');
 	});
 
+var i = 0;
 Promise.all(tasks)
 	.then(() => {
 		console.log('\n\n-----[index] Calling RPC "test child:*" after setup--------\n\n');
@@ -85,7 +86,7 @@ Promise.all(tasks)
 			})
 
 			.then(() => console.log('\n\n-----[index] Calling RPC "hello child:*" after setup--------\n\n'))
-			.then(() => hello.call('child:*', { from: 'Parent' }))
+			.then(() => hello.call('child:*', () => 'count is - ' + i++))
 			.then((resp) => {
 				console.log('\n\nGot "hello child:*" response as :\n');
 				console.log(JSON.stringify(resp, null, 2));
