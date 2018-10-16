@@ -211,13 +211,14 @@
 				var reqData = msg.reqData;
 
 				_self.requestHandlers.forEach((h) => {
-					/* Each handler is called with (v,p,l,s) as follows
+					/* Each handler is called with (v,p,s,t,msg) as follows
 						v	= reqData 	- data sent by caller,
 						p	= prev		- response got from the prevhandler's execution for this call,
-						l	= tName 		- name of current transport (TODO - buggy, points to local transport name)
-						s 	= msg.tName 	- name of the calling transport (this was the actual usecase for tName ?)
+						s 	= msg.source 	- name of the calling transport (this was the actual usecase for tName ?)
+						t	= tName 		- name of current transport (TODO - buggy, points to local transport name)
+						msg 	= msg 		- full raw msg obj
 					*/
-					chain = chain.then((prev) => h(msg.reqData, prev, tName, msg.tName));
+					chain = chain.then((prev) => h(msg.reqData, prev, msg.source, tName, msg));
 				});
 				return chain
 					.then((respData) => {

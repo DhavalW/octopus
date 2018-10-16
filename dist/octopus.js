@@ -101,7 +101,7 @@
 		this.onProvideFn = null;
 		this.endpoint.commands[name] = this;
 
-		this.logger = options.logger.child('CMD:'+this.name);
+		this.logger = options.logger.child('CMD:' + this.name);
 		this.sendLogger = this.logger.child('send');
 		this.recvLogger = this.logger.child('recv');
 		this.logger.enabled && this.logger.log('Created new command as ', name);
@@ -115,11 +115,11 @@
 		return Math.random().toString().substr(8) + '-' + Date.now();
 	};
 
-	rpcCommand.prototype.sendToID = function(tid, msg, mode){
+	rpcCommand.prototype.sendToID = function (tid, msg, mode) {
 		var _self = this;
 		var tName = _self.endpoint.transports[tid].tName;
 		msg.source = _self.endpoint.label;
-		_self.sendLogger.enabled && _self.sendLogger.log('Sending on transport [%s][%s], mode = %s,  msg =', tid,tName,mode,msg);
+		_self.sendLogger.enabled && _self.sendLogger.log('Sending on transport [%s][%s], mode = %s,  msg =', tid, tName, mode, msg);
 
 		if (!mode || mode != 'respond') {
 
@@ -129,7 +129,7 @@
 
 				// handler function
 				var handler = function (respData, msgType) {
-					_self.sendLogger.enabled && _self.sendLogger.log('\n\nResponse handler called with respData & msgTypes as \n',respData, msgType);
+					_self.sendLogger.enabled && _self.sendLogger.log('\n\nResponse handler called with respData & msgTypes as \n', respData, msgType);
 
 					delete _self.responseHandlers[tid][msg.msgID];
 
@@ -171,7 +171,7 @@
 				};
 				container.rpc_msg[_self.name] = msg;
 
-				_self.sendLogger.enabled && _self.sendLogger.log('\n\n\nSending %s to [%s] as \n',mode =='respond'?'response':'request', tName, container);
+				_self.sendLogger.enabled && _self.sendLogger.log('\n\n\nSending %s to [%s] as \n', mode == 'respond' ? 'response' : 'request', tName, container);
 				Promise.resolve(_self.endpoint.transports[tid].send(container))
 					.then((s) => sent = true)
 					.catch((e) => {
@@ -180,8 +180,7 @@
 					});
 
 			});
-		}
-		else{
+		} else {
 
 			var container = {
 				rpc_msg: {},
@@ -189,16 +188,21 @@
 			};
 			container.rpc_msg[_self.name] = msg;
 
-			_self.sendLogger.enabled && _self.sendLogger.log('\n\n\nSending %s to [%s] as \n',mode =='respond'?'response':'request', tName, container);
+			_self.sendLogger.enabled && _self.sendLogger.log('\n\n\nSending %s to [%s] as \n', mode == 'respond' ? 'response' : 'request', tName, container);
 			return Promise.resolve(_self.endpoint.transports[tid].send(container));
 		}
 	};
 
+	/*
+		Data can be a value or a function.
+		If its a function, it will be evaluated for every new transport and passed the transport name & index as parameters.
+	*/
 	rpcCommand.prototype.call = function (namespace, data, mode) {
 		var _self = this;
 		var tName;
 		namespace = new Namespace(namespace);
 		var tasks = [];
+		var evaluate = false;
 
 		var msg = {
 			msgID: _self.autoID(),
@@ -206,12 +210,20 @@
 			reqData: data,
 		};
 
+		if (typeof data === 'function') {
+			evaluate = true;
+		}
+
+
 		Object.keys(_self.endpoint.transports)
-			.forEach(function(tid){
+			.forEach(function (tid, index) {
 				_self.sendLogger.enabled && _self.sendLogger.log('Scanning for namespace on transport [%s] as \n', tid);
 
 				tName = _self.endpoint.transports[tid].tName;
+
 				if (_self.endpoint.transports[tid].initialised === true && namespace.test(tName)) {
+					if (evaluate === true)
+						msg.reqData = data(_self.endpoint.transports[tid].tName, index);
 					_self.sendLogger.enabled && _self.sendLogger.log('Transport [%s] is valid. Attempting to send', tid);
 					tasks.push(_self.sendToID(tid, msg, mode));
 				}
@@ -247,9 +259,10 @@
 
 	rpcCommand.prototype.recieve = function (msg, transport) {
 		var _self = this;
-		var tName = transport.tName, tid = transport.id;
+		var tName = transport.tName,
+			tid = transport.id;
 
-		_self.recvLogger.enabled && _self.recvLogger.log('\n\n\nCommand [%s] Data recvd on [%s][%s] as \n',_self.name, _self.endpoint.label,_self.endpoint.dir,tName, msg);
+		_self.recvLogger.enabled && _self.recvLogger.log('\n\n\nCommand [%s] Data recvd on [%s][%s] as \n', _self.name, _self.endpoint.label, _self.endpoint.dir, tName, msg);
 
 		switch (msg.msgType) {
 		case MESSAGETYPES.responseAccept:
@@ -273,13 +286,14 @@
 				var reqData = msg.reqData;
 
 				_self.requestHandlers.forEach((h) => {
-					/* Each handler is called with (v,p,l,s) as follows
+					/* Each handler is called with (v,p,s,t,msg) as follows
 						v	= reqData 	- data sent by caller,
 						p	= prev		- response got from the prevhandler's execution for this call,
-						l	= tName 		- name of current transport (TODO - buggy, points to local transport name)
-						s 	= msg.tName 	- name of the calling transport (this was the actual usecase for tName ?)
+						s 	= msg.source 	- name of the calling transport (this was the actual usecase for tName ?)
+						t	= tName 		- name of current transport (TODO - buggy, points to local transport name)
+						msg 	= msg 		- full raw msg obj
 					*/
-					chain = chain.then((prev) => h(msg.reqData, prev, tName, msg.tName));
+					chain = chain.then((prev) => h(msg.reqData, prev, msg.source, tName, msg));
 				});
 				return chain
 					.then((respData) => {
