@@ -35,7 +35,6 @@
 	};
 	transportTypes['processRemote'] = function (type, socket) {
 		return {
-			send: (data) => socket.send(JSON.stringify(data)),
 			send: (data) => {
 				return new Promise((res, rej) => {
 					var s = socket.send(

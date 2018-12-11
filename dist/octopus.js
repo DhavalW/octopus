@@ -320,7 +320,8 @@
 					})
 					.then(() => _self.onProvideFn ? _self.onProvideFn(reqData, msg.respData, tName, msg) : null)
 					.catch((e) => {
-						console.error('Unexpected Error while executing onProvide function - ', e);
+						console.error('[Octopus] Error while executing [%s] provider chain on [%s] - ',_self.name, tName, e);
+						return Promise.reject(e);
 					});
 
 			} else {
@@ -349,7 +350,7 @@
 	rpcCommand.prototype.unProvide = function (fn) {
 		var index = this.requestHandlers.findIndex((x) => x === fn);
 		if (index > -1)
-			this.requestHandlers.splice(handlerIndex, 1);
+			this.requestHandlers.splice(index, 1);
 		return this;
 	};
 
@@ -599,7 +600,6 @@
 	};
 	transportTypes['processRemote'] = function (type, socket) {
 		return {
-			send: (data) => socket.send(JSON.stringify(data)),
 			send: (data) => {
 				return new Promise((res, rej) => {
 					var s = socket.send(
