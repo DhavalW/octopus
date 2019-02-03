@@ -18,8 +18,8 @@ module.exports = function (debug) {
 			this.commands = {};
 			this.logger = appLogger.child(this.name);
 
-			this.incoming = new rpcEndpoint(name, 'i', { logger: this.logger});
-			this.outgoing = new rpcEndpoint(name, 'o', { logger: this.logger});
+			this.incoming = new rpcEndpoint(name, 'i', { logger: this.logger });
+			this.outgoing = new rpcEndpoint(name, 'o', { logger: this.logger });
 
 			this.logger.enabled && this.logger.log('Created new Octopus RPC as ', this.name);
 			return this;
@@ -51,20 +51,25 @@ Incoming (provides):
 `;
 
 		logString += this.incoming.displayString();
-		logString +=`\n\n-------------\nOutgoing (calls):\n\n`;
+		logString += `\n\n-------------\nOutgoing (calls):\n\n`;
 		logString += this.outgoing.displayString();
-		logString +='\n\n------------------------------------------------------------------------------------\n\n';
+		logString += '\n\n------------------------------------------------------------------------------------\n\n';
 
 		console.log(logString);
 	};
 
 	rpc.prototype.over = function (socket, type) {
 		var tasks = [];
-		tasks.push(this.incoming.over(socket, type)
+		tasks.push(
+			this.incoming.over(socket, type)
 			.as(this.name)
-			.initPromise);
-		tasks.push(this.outgoing.over(socket, type)
-			.initPromise);
+			.initPromise
+		);
+		tasks.push(
+			this.outgoing.over(socket, type)
+			.asRemote()
+			.initPromise
+		);
 		return Promise.all(tasks);
 	};
 	rpc.prototype.remove = function (socket) {

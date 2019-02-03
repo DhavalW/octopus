@@ -33,7 +33,10 @@ hello.provide(function (data, prev, transportName) {
 	return 'Parent :- Hey there ! ' + data.from;
 });
 
-
+rpc.command('test/tname').provide(() => {
+	rpc.remove(child1);
+	rpc.remove(child2);
+});
 /*	STEP 4 - Add transports & Call the rpc commands.
 
 	Tranports must be a single direct p2p link (for eg :- a single server-client socket connection)
@@ -59,7 +62,8 @@ var i = 0;
 Promise.all(tasks)
 	.then(() => {
 		console.log('\n\n-----[index] Calling RPC "test child:*" after setup--------\n\n');
-		test.call('child:*')
+		return Promise.resolve()
+			.then(() => test.call('child:*'))
 			.then((resp) => {
 				console.log('\n\nGot "test child:*" raw response as :\n', resp);
 				console.log('\nParsed as :\n');
@@ -94,9 +98,16 @@ Promise.all(tasks)
 				console.log(JSON.stringify(rpc.parseByStatus(resp), null, 2));
 			})
 
+			.then(() => console.log('\n\n-----[index] Running test/tname --------\n\n'))
+			.then(() => rpc.command('test/tname').call('child:*', { value: 'hello' }))
+			.then((res) => console.log('\n\ntname test response = ', res))
+			.then(() => console.log('\n\ntname test complete'))
+			.then(() => setTimeout(() => rpc.displayTransports(), 1000))
+
+
 			.catch((e) => console.log('Unexpected error - ', e));
 
 		// TODO - rename doesn't work properly yet.
 		// rpc.renameTo('local:parent:parent2');
-		setTimeout(() => rpc.displayTransports(), 1000);
+
 	});

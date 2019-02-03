@@ -40,11 +40,96 @@
 		return Math.random().toString().substr(8) + '-' + Date.now();
 	};
 
-	rpcCommand.prototype.sendToID = function (tid, msg, mode) {
+	rpcCommand.prototype.sendToID = function (tid, msg, mode, pTransName) {
 		var _self = this;
+
+		msg.msgID = _self.autoID();
+		_self.sendLogger.enabled && _self.sendLogger.log('\n\n[sendToID] called with tid[%s], msgID[%s], mode[%s], pTransName[%s] \n', tid, msg.msgID, mode, pTransName);
+
+		/*
+			NOTE - Adding a check as a hotfix to avoind crashing on tName errors.
+
+			Source of errors - sendToID is called from call() as well as recursively, when responding to messages.
+
+			The source of tName errors may be the async nature. Since this is async, there's a gap in between call & execution
+			between which a "remove()" function call might delete the transport, raising such issues.
+
+			Case #1 - Deleted transport after a call from .call(), but before the execution of sendToID, causing tName errors.
+			Case #2 - Alternately, Deleted the transport after a message was recieved, but before a response could be sent.
+
+			NOTE - EDGE CASE TO SOLVE :
+			What happens if in either case, the response is critical for proper function / avoiding duplication of calls (see below),
+			and could be sent because the reciever still exists (ie same tName), but over a different transport (ie different tID).
+
+			How duplication of calls -
+				Sender sends RPC
+				Reciever gets RPC & executes provider
+				Sender disconnects & reconnects with a new connection
+				Reciever removes previous socket & re-adds new socket (ie same tName, once initial handshake is done, but different tID).
+				Reciever RPC call response fails / ignored because old tID doesn't exist anymore.
+				Sender times out (or considers failure due to disconnection / remains hanging as a memory leak), even though RPC provider has executed on reciever
+				Application tries again assuming bad RPC call.
+
+			Possible solution -
+				if tID mismatch is found,
+					a search of other transports with the same tName is done,
+					 	if found, send as usual and resolve
+						if not found,
+							call is hooked and waits till another transport with the same name connects before timeout
+							if connects,
+								send as usual & resolve
+							if not,
+								fail with a timeout
+		*/
+
+		if (!_self.endpoint.transports[tid]) {
+			_self.sendLogger.enabled && _self.sendLogger.log('\n\n[sendToID] transport to tid[%s] does not exist. Taking corrective action... \n', tid);
+
+
+			var trans = _self.endpoint.findTransportByName(pTransName);
+
+			// If found, continue with discovered transport
+			if (trans) {
+				tid = trans.id;
+			}
+
+			// Else wait for a new transport to connect, or reject on timeout
+			else {
+				return Promise.resolve()
+
+					// Wait for new transport with given name to setup
+					.then(() => _self.endpoint.addTransportNameChangeHook(pTransName))
+
+					// Call this recursively and try to resend
+					.then((t) => this.sendToID(t.id, msg, mode, pTransName))
+
+					// Reject if it fails (worst case situation)
+					.catch(() => {
+						_self.sendLogger.enabled && _self.sendLogger.warn('[ERROR] transport tName[%s] was not found as tid[%s]. Might lead to duplicated provider executions, if re-connections caused it.', tName, tid);
+
+						if (!mode || mode != 'respond') {
+							_self.sendLogger.enabled && _self.sendLogger.warn('Cannot call - missing transport');
+							return Promise.resolve({
+								sent: false,
+								status: false,
+								transport: pTransName,
+								command: _self.name,
+								response: 'transport removed or changed'
+							});
+						} else {
+							_self.sendLogger.enabled && _self.sendLogger.warn('Cannot respond - missing transport');
+							return Promise.reject('transport missing');
+						}
+					});
+			}
+		}
+
+		// NOTE - In case the tName has changed since the call
 		var tName = _self.endpoint.transports[tid].tName;
+
 		msg.source = _self.endpoint.label;
 		_self.sendLogger.enabled && _self.sendLogger.log('Sending on transport [%s][%s], mode = %s,  msg =', tid, tName, mode, msg);
+
 
 		if (!mode || mode != 'respond') {
 
@@ -56,7 +141,8 @@
 				var handler = function (respData, msgType) {
 					_self.sendLogger.enabled && _self.sendLogger.log('\n\nResponse handler called with respData & msgTypes as \n', respData, msgType);
 
-					delete _self.responseHandlers[tid][msg.msgID];
+					delete _self.responseHandlers[tName][msg.msgID];
+
 
 					switch (msgType) {
 
@@ -84,10 +170,11 @@
 				};
 
 
-				if (!_self.responseHandlers[tid])
-					_self.responseHandlers[tid] = {};
+				if (!_self.responseHandlers[tName])
+					_self.responseHandlers[tName] = {};
 
-				_self.responseHandlers[tid][msg.msgID] = handler;
+				_self.sendLogger.enabled && _self.sendLogger.log('\n\nAdding response handler at [%s][%s] \n', tName, msg.msgID);
+				_self.responseHandlers[tName][msg.msgID] = handler;
 
 
 				var container = {
@@ -150,7 +237,9 @@
 					if (evaluate === true)
 						msg.reqData = data(_self.endpoint.transports[tid].tName, index);
 					_self.sendLogger.enabled && _self.sendLogger.log('Transport [%s] is valid. Attempting to send', tid);
-					tasks.push(_self.sendToID(tid, msg, mode));
+
+					// NOTE - adding tName at the end as identification in case of tName errors. See .sendToID() comments.
+					tasks.push(_self.sendToID(tid, msg, mode, tName));
 				}
 			});
 
@@ -193,11 +282,13 @@
 		case MESSAGETYPES.responseAccept:
 		case MESSAGETYPES.responseFail:
 			// console.log('\n\n\nResponse recvd on [%s] from [%s] as\n ',tName, msg.rtName, msg);
-			if (_self.responseHandlers[tid] && _self.responseHandlers[tid][msg.respID]) {
-				// console.log('handler found. Responding !');
-				_self.responseHandlers[tid][msg.respID](msg.respData, msg.msgType);
+			if (_self.responseHandlers[tName] && _self.responseHandlers[tName][msg.respID]) {
+				_self.sendLogger.enabled && _self.sendLogger.log('handler found. Responding !');
+				return Promise.resolve(_self.responseHandlers[tName][msg.respID](msg.respData, msg.msgType));
+
 			} else {
-				// console.log('handler not found');
+				_self.sendLogger.enabled && _self.sendLogger.log('handler not found');
+				return Promise.reject(new Error('handler not found'));
 			}
 			break;
 
@@ -230,7 +321,7 @@
 						msg.msgType = MESSAGETYPES.responseAccept;
 						msg.respData = respData;
 						delete msg.reqData;
-						return _self.sendToID(tid, msg, 'respond');
+						return _self.sendToID(tid, msg, 'respond', tName);
 					})
 					.catch((e) => {
 						// console.log('\nRequest handlers FAILED\n Results are',e);
@@ -241,23 +332,23 @@
 						msg.msgType = MESSAGETYPES.responseFail;
 						msg.respData = e;
 						delete msg.reqData;
-						return _self.sendToID(tid, msg, 'respond');
+						return _self.sendToID(tid, msg, 'respond', tName);
 					})
 					.then(() => _self.onProvideFn ? _self.onProvideFn(reqData, msg.respData, tName, msg) : null)
 					.catch((e) => {
-						console.error('[Octopus] Error while executing [%s] provider chain on [%s] - ',_self.name, tName, e);
+						console.error('[Octopus] Error while executing [%s] provider chain on [%s] - ', _self.name, tName, e);
 						return Promise.reject(e);
 					});
 
 			} else {
-				// _self.recvLogger.enabled && _self.recvLogger.error('ERROR - No requestHandlers for command[%s] on [%s][%s] -  tName, msg - ', _self.name, _self.endpoint.label, _self.endpoint.dir, tName, msg);
+				_self.recvLogger.enabled && _self.recvLogger.error('ERROR - No requestHandlers for command[%s] on [%s][%s] -  tName, msg - ', _self.name, _self.endpoint.label, _self.endpoint.dir, tName, msg);
 				msg.respID = msg.msgID;
 				msg.rtName = tName;
 				msg.msgID = _self.autoID();
 				msg.msgType = MESSAGETYPES.responseFail;
 				msg.respData = 'no providers';
 				delete msg.reqData;
-				return _self.sendToID(tid, msg, 'respond');
+				return _self.sendToID(tid, msg, 'respond', tName);
 
 			}
 			break;

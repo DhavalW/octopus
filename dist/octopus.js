@@ -115,11 +115,96 @@
 		return Math.random().toString().substr(8) + '-' + Date.now();
 	};
 
-	rpcCommand.prototype.sendToID = function (tid, msg, mode) {
+	rpcCommand.prototype.sendToID = function (tid, msg, mode, pTransName) {
 		var _self = this;
+
+		msg.msgID = _self.autoID();
+		_self.sendLogger.enabled && _self.sendLogger.log('\n\n[sendToID] called with tid[%s], msgID[%s], mode[%s], pTransName[%s] \n', tid, msg.msgID, mode, pTransName);
+
+		/*
+			NOTE - Adding a check as a hotfix to avoind crashing on tName errors.
+
+			Source of errors - sendToID is called from call() as well as recursively, when responding to messages.
+
+			The source of tName errors may be the async nature. Since this is async, there's a gap in between call & execution
+			between which a "remove()" function call might delete the transport, raising such issues.
+
+			Case #1 - Deleted transport after a call from .call(), but before the execution of sendToID, causing tName errors.
+			Case #2 - Alternately, Deleted the transport after a message was recieved, but before a response could be sent.
+
+			NOTE - EDGE CASE TO SOLVE :
+			What happens if in either case, the response is critical for proper function / avoiding duplication of calls (see below),
+			and could be sent because the reciever still exists (ie same tName), but over a different transport (ie different tID).
+
+			How duplication of calls -
+				Sender sends RPC
+				Reciever gets RPC & executes provider
+				Sender disconnects & reconnects with a new connection
+				Reciever removes previous socket & re-adds new socket (ie same tName, once initial handshake is done, but different tID).
+				Reciever RPC call response fails / ignored because old tID doesn't exist anymore.
+				Sender times out (or considers failure due to disconnection / remains hanging as a memory leak), even though RPC provider has executed on reciever
+				Application tries again assuming bad RPC call.
+
+			Possible solution -
+				if tID mismatch is found,
+					a search of other transports with the same tName is done,
+					 	if found, send as usual and resolve
+						if not found,
+							call is hooked and waits till another transport with the same name connects before timeout
+							if connects,
+								send as usual & resolve
+							if not,
+								fail with a timeout
+		*/
+
+		if (!_self.endpoint.transports[tid]) {
+			_self.sendLogger.enabled && _self.sendLogger.log('\n\n[sendToID] transport to tid[%s] does not exist. Taking corrective action... \n', tid);
+
+
+			var trans = _self.endpoint.findTransportByName(pTransName);
+
+			// If found, continue with discovered transport
+			if (trans) {
+				tid = trans.id;
+			}
+
+			// Else wait for a new transport to connect, or reject on timeout
+			else {
+				return Promise.resolve()
+
+					// Wait for new transport with given name to setup
+					.then(() => _self.endpoint.addTransportNameChangeHook(pTransName))
+
+					// Call this recursively and try to resend
+					.then((t) => this.sendToID(t.id, msg, mode, pTransName))
+
+					// Reject if it fails (worst case situation)
+					.catch(() => {
+						_self.sendLogger.enabled && _self.sendLogger.warn('[ERROR] transport tName[%s] was not found as tid[%s]. Might lead to duplicated provider executions, if re-connections caused it.', tName, tid);
+
+						if (!mode || mode != 'respond') {
+							_self.sendLogger.enabled && _self.sendLogger.warn('Cannot call - missing transport');
+							return Promise.resolve({
+								sent: false,
+								status: false,
+								transport: pTransName,
+								command: _self.name,
+								response: 'transport removed or changed'
+							});
+						} else {
+							_self.sendLogger.enabled && _self.sendLogger.warn('Cannot respond - missing transport');
+							return Promise.reject('transport missing');
+						}
+					});
+			}
+		}
+
+		// NOTE - In case the tName has changed since the call
 		var tName = _self.endpoint.transports[tid].tName;
+
 		msg.source = _self.endpoint.label;
 		_self.sendLogger.enabled && _self.sendLogger.log('Sending on transport [%s][%s], mode = %s,  msg =', tid, tName, mode, msg);
+
 
 		if (!mode || mode != 'respond') {
 
@@ -131,7 +216,8 @@
 				var handler = function (respData, msgType) {
 					_self.sendLogger.enabled && _self.sendLogger.log('\n\nResponse handler called with respData & msgTypes as \n', respData, msgType);
 
-					delete _self.responseHandlers[tid][msg.msgID];
+					delete _self.responseHandlers[tName][msg.msgID];
+
 
 					switch (msgType) {
 
@@ -159,10 +245,11 @@
 				};
 
 
-				if (!_self.responseHandlers[tid])
-					_self.responseHandlers[tid] = {};
+				if (!_self.responseHandlers[tName])
+					_self.responseHandlers[tName] = {};
 
-				_self.responseHandlers[tid][msg.msgID] = handler;
+				_self.sendLogger.enabled && _self.sendLogger.log('\n\nAdding response handler at [%s][%s] \n', tName, msg.msgID);
+				_self.responseHandlers[tName][msg.msgID] = handler;
 
 
 				var container = {
@@ -225,7 +312,9 @@
 					if (evaluate === true)
 						msg.reqData = data(_self.endpoint.transports[tid].tName, index);
 					_self.sendLogger.enabled && _self.sendLogger.log('Transport [%s] is valid. Attempting to send', tid);
-					tasks.push(_self.sendToID(tid, msg, mode));
+
+					// NOTE - adding tName at the end as identification in case of tName errors. See .sendToID() comments.
+					tasks.push(_self.sendToID(tid, msg, mode, tName));
 				}
 			});
 
@@ -268,11 +357,13 @@
 		case MESSAGETYPES.responseAccept:
 		case MESSAGETYPES.responseFail:
 			// console.log('\n\n\nResponse recvd on [%s] from [%s] as\n ',tName, msg.rtName, msg);
-			if (_self.responseHandlers[tid] && _self.responseHandlers[tid][msg.respID]) {
-				// console.log('handler found. Responding !');
-				_self.responseHandlers[tid][msg.respID](msg.respData, msg.msgType);
+			if (_self.responseHandlers[tName] && _self.responseHandlers[tName][msg.respID]) {
+				_self.sendLogger.enabled && _self.sendLogger.log('handler found. Responding !');
+				return Promise.resolve(_self.responseHandlers[tName][msg.respID](msg.respData, msg.msgType));
+
 			} else {
-				// console.log('handler not found');
+				_self.sendLogger.enabled && _self.sendLogger.log('handler not found');
+				return Promise.reject(new Error('handler not found'));
 			}
 			break;
 
@@ -305,7 +396,7 @@
 						msg.msgType = MESSAGETYPES.responseAccept;
 						msg.respData = respData;
 						delete msg.reqData;
-						return _self.sendToID(tid, msg, 'respond');
+						return _self.sendToID(tid, msg, 'respond', tName);
 					})
 					.catch((e) => {
 						// console.log('\nRequest handlers FAILED\n Results are',e);
@@ -316,23 +407,23 @@
 						msg.msgType = MESSAGETYPES.responseFail;
 						msg.respData = e;
 						delete msg.reqData;
-						return _self.sendToID(tid, msg, 'respond');
+						return _self.sendToID(tid, msg, 'respond', tName);
 					})
 					.then(() => _self.onProvideFn ? _self.onProvideFn(reqData, msg.respData, tName, msg) : null)
 					.catch((e) => {
-						console.error('[Octopus] Error while executing [%s] provider chain on [%s] - ',_self.name, tName, e);
+						console.error('[Octopus] Error while executing [%s] provider chain on [%s] - ', _self.name, tName, e);
 						return Promise.reject(e);
 					});
 
 			} else {
-				// _self.recvLogger.enabled && _self.recvLogger.error('ERROR - No requestHandlers for command[%s] on [%s][%s] -  tName, msg - ', _self.name, _self.endpoint.label, _self.endpoint.dir, tName, msg);
+				_self.recvLogger.enabled && _self.recvLogger.error('ERROR - No requestHandlers for command[%s] on [%s][%s] -  tName, msg - ', _self.name, _self.endpoint.label, _self.endpoint.dir, tName, msg);
 				msg.respID = msg.msgID;
 				msg.rtName = tName;
 				msg.msgID = _self.autoID();
 				msg.msgType = MESSAGETYPES.responseFail;
 				msg.respData = 'no providers';
 				delete msg.reqData;
-				return _self.sendToID(tid, msg, 'respond');
+				return _self.sendToID(tid, msg, 'respond', tName);
 
 			}
 			break;
@@ -388,16 +479,17 @@
 
 	var rpcEndpoint = function (l, dir, options) {
 		options = options || {};
-		this.logger = options.logger.child(dir == 'i'?'EP:in':'EP:out');
+		this.logger = options.logger.child(dir == 'i' ? 'EP:in' : 'EP:out');
 
 
 		this.transports = {};
+		this.nameChangeHooks = {};
 		this.label = l;
 		this.dir = dir;
 		this.commands = {};
 		this.transportTypes = rpcStockTransports;
 
-		this.logger.enabled && this.logger.log('Created new endpoint as [%s][%s]', l,dir);
+		this.logger.enabled && this.logger.log('Created new endpoint as [%s][%s]', l, dir);
 
 		return this;
 	};
@@ -407,25 +499,75 @@
 	};
 
 	rpcEndpoint.prototype.over = function (socket, type) {
-		return new rpcTransport(type, socket, this, {logger:this.logger});
+		return new rpcTransport(type, socket, this, { logger: this.logger });
 	};
 	rpcEndpoint.prototype.remove = function (socket) {
 		var _self = this;
-		Object.keys(_self.transports).forEach((tid)=>{
-			if(_self.transports[tid].socket === socket)
-				delete _self.transports[tid];
-		});
+		// Object.keys(_self.transports).forEach((tid) => {
+		// 	if (_self.transports[tid].socket == socket){
+		// 		_self.logger.enabled && _self.logger.log('Destroying & removing transport [%s] tName [%s]. ',tid,_self.transports[tid].tName);
+		// 		_self.transports[tid].destroy();
+		// 		delete _self.transports[tid];
+		// 	}
+		// });
+
+		// _self.logger.enabled && _self.logger.log('Attempting to remove socket. ',socket._octopus);
+		// _self.logger.enabled && _self.logger.log('Current endpoint[%s][%s] transports are . ',_self.label, _self.dir, _self.transports);
+
+		if (socket && socket._octopus && socket._octopus.transports) {
+
+			// Go through transports added to socket
+			socket._octopus.transports.forEach((t) => {
+
+				// See if its a transport of this endpoint
+				var foundT = Object.keys(_self.transports).find(x => _self.transports[x] === t);
+
+				// if found, disassociate from socket, destroy and delete from endpoint
+				if (foundT) {
+					foundT = _self.transports[foundT];
+					_self.logger.enabled && _self.logger.warn('Destroying & removing transport [%s] tName [%s] from endpoint[%s][%s]. ', foundT.id, foundT.tName, _self.label, _self.dir);
+
+					var index = socket._octopus.transports.findIndex(x => x == t);
+					socket._octopus.transports.splice(index, 1);
+
+
+					foundT.destroy();
+					delete _self.transports[foundT.id];
+				}
+			});
+		}
 	};
 
 	rpcEndpoint.prototype.rename = function (namespace) {
+
+		/*
+			NOTE - Must investigate if there are side effects ?
+
+			Should we be allowed to change remote side name ?
+				Any usecase where we need it ?
+
+			If our name change is accepted by remote side,
+			 	should it trigger name changes with other connected transports too ? since there can only be one name for the remote.
+
+			If we change the remote's name,
+				should it trigger name changes with other connected transports too ? since there can only be one name for the remote.
+
+			If so,
+				Could this cause infinite loops / ripples ?
+
+			For eg - Say connection path is setup as
+				A - B - C - D - A
+				    |_______|
+
+		*/
 		var _self = this;
 		namespace = new Namespace(namespace);
 		return {
 			as: (newName) => {
 				_self.label = newName;
-				Object.keys(_self.transports).forEach((tName) => {
-					if (namespace.test(tName)) {
-						_self.transports[tName].as(newName);
+				Object.keys(_self.transports).forEach((tid) => {
+					if (namespace.test(_self.transports[tid].tName)) {
+						_self.transports[tid].as(newName);
 					}
 				});
 				return this;
@@ -433,19 +575,73 @@
 		}
 	};
 
+	// Internal hook called by transport, to signal a name change
+	rpcEndpoint.prototype.transportNameChanged = function (transport) {
+
+		// Run past all registered hooks & see if any are registered for this tName
+		if (this.nameChangeHooks[transport.tName]) {
+			this.nameChangeHooks[transport.tName].forEach(x => x(transport));
+		}
+	};
+
+	/*
+		Returns a one-time hook promise that
+			1> resolves when appropriate name change occurs
+			2> rejects if timeout happens
+
+		& Automatically cleans up after it executes once (resolve or reject).
+	*/
+	rpcEndpoint.prototype.addTransportNameChangeHook = function (tName, timeout) {
+		if (!this.nameChangeHooks[tName])
+			this.nameChangeHooks[tName] = [];
+
+		var p = new Promise((res, rej) => {
+			var fn = (transport) => {
+				if (res && !p.done) {
+					p.done = true;
+					var i = this.nameChangeHooks[tName].findIndex(x => x == fn);
+					this.nameChangeHooks[tName].splice(i, 1);
+					res(transport);
+				}
+			};
+
+			this.nameChangeHooks[tName].push(fn);
+
+			setTimeout(() => {
+				if (rej && !p.done) {
+					p.done == true;
+					var i = this.nameChangeHooks[tName].findIndex(x => x == fn);
+					this.nameChangeHooks[tName].splice(i, 1);
+					rej();
+				}
+			}, timeout || 5000);
+
+		});
+
+		return p;
+	};
+
 	rpcEndpoint.prototype.displayString = function () {
 		var _self = this;
 		var logString = 'key\t\t\tname\t\t\ttype:id\t\t\tinitalised\n';
 		Object.keys(_self.transports).forEach((tKey) => {
-			logString+=`${tKey}\t\t${_self.transports[tKey].tName}\t\t${_self.transports[tKey].type +':'+_self.transports[tKey].id}\t\t${_self.transports[tKey].initialised}\n`;
+			logString += `${tKey}\t\t${_self.transports[tKey].tName}\t\t${_self.transports[tKey].type +':'+_self.transports[tKey].id}\t\t${_self.transports[tKey].initialised}\n`;
 		});
 		return logString;
 	};
 
 	rpcEndpoint.prototype.command = function (name) {
-		return new rpcCommand(name, this, {logger:this.logger});
+		return new rpcCommand(name, this, { logger: this.logger });
 	};
 
+	rpcEndpoint.prototype.findTransportByName = function (tName) {
+		var tKey = Object.keys(this.transports).find(x => this.transports[x].tName == tName);
+
+		if (tKey)
+			return this.transports[tKey];
+		else
+			return null;
+	};
 
 	/* ----------------------------------------------------------- */
 
@@ -457,8 +653,8 @@
 },{"./namespace.js":1,"./rpcCommand.js":2,"./rpcTransport.js":4,"./stockTransports.js":5}],4:[function(require,module,exports){
 (function () {
 	var idCount = 0;
-	var autoID = function(){
-		return 'T'+ (++idCount);
+	var autoID = function () {
+		return 'T' + (++idCount);
 	};
 
 	var rpcTransport = function (type, socket, endpoint, options) {
@@ -467,13 +663,14 @@
 		var _self = this;
 
 		_self.id = autoID();
-		_self.logger = options.logger.child('T:'+type+':'+_self.id);
+		_self.logger = options.logger.child('T:' + type + ':' + _self.id);
 
 		_self.endpoint = endpoint;
 		_self.type = type;
-		_self.socket = socket;	// Also used for matching & removal, besides internal socket access.
+		_self.socket = socket; // Also used for matching & removal, besides internal socket access.
 		_self.tName = 'nonname';
 		_self.initialised = false;
+		_self.disabled = false;
 		_self.nameClock = 0;
 		_self.dirFlip = {
 			i: 'o',
@@ -482,10 +679,24 @@
 
 		// Add trasport type specific methods to self
 		Object.assign(_self, _self.endpoint.transportTypes[type](type, socket));
+		if(!socket._octopus)
+			socket._octopus = {};
 
-		_self.initPromise = new Promise((res,rej)=>{
-			_self.onRecv((data) => {
-				// console.log('[onRecv] Data recvd on [%s][%s]',_self.tName,_self.endpoint.dir, data);
+		if(!socket._octopus.transports)
+			socket._octopus.transports = [];
+
+		if(!socket._octopus.transports.includes(this))
+			socket._octopus.transports.push(this);
+
+		_self.initPromise = new Promise((res, rej) => {
+			_self.recvHandler = function (data) {
+
+				// Abort if we're disabled
+				if(_self.disabled)
+					return;
+
+
+				// _self.logger.enabled && _self.logger.log('[onRecv] Data recvd on [%s][%s]',_self.tName,_self.endpoint.dir, data);
 				if (data.rpc_dir == _self.dirFlip[_self.endpoint.dir]) {
 					// console.log('[onRecv] Data accepted on [%s][%s]',_self.tName,_self.endpoint.dir, data);
 
@@ -496,18 +707,70 @@
 								Without this, a simultaneous request causes each one to sends his name change over while implementing the other's name change request.
 								 	consequence - a name swap, instead of consensus on a single name value.
 						*/
-						if (data.rpc_tName_change.force || data.rpc_tName_change.clock >= _self.nameClock) {
-							_self.logger.enabled && _self.logger.log('[%s, clock %s] [%s] Changing name of transport [%s][%s] to [%s] at clock =', _self.endpoint.label, _self.nameClock, data.rpc_tName_change.force ? 'forced' : '', _self.tName,_self.id, data.rpc_tName_change.tName, data.rpc_tName_change.clock);
+
+						if(data.rpc_tName_change.request == true){
+							/*
+								Opposite party has requested a name change transaction, to be initiated from here.
+							*/
+							_self.logger.enabled && _self.logger.log('Name change requested by remote. Initiating transaction...',_self.tName);
+
+							_self.as(_self.tName);
+						}
+						else if (data.rpc_tName_change.ack == true) {
+
+							/*
+								Opposite party has accepted the name change that we proposed.
+								Hurray. Signal namechange to endpoint & resolve.
+							*/
+							_self.logger.enabled && _self.logger.log('Name change to [%s] acknowledged.',_self.tName);
+
+							_self.endpoint.transportNameChanged(_self);
+
+							if (!_self.initialised) {
+								_self.initialised = true;
+								_self.logger.enabled && _self.logger.log('changed initialised status from false to true');
+								res();
+							}
+						} else if (data.rpc_tName_change.force || data.rpc_tName_change.clock >= _self.nameClock) {
+
+							/*
+								Opposite party's clock is higher or has already reached the same level (ie before us).
+								Accept their proposal, send ack, signal namechange to endpoint
+							*/
+
+							_self.logger.enabled && _self.logger.log('[%s, clock %s] [%s] Changing name of transport [%s][%s] to [%s] at clock =', _self.endpoint.label, _self.nameClock, data.rpc_tName_change.force ? 'forced' : '', _self.tName, _self.id, data.rpc_tName_change.tName, data.rpc_tName_change.clock);
 							// delete _self.endpoint.transports[_self.tName];
 							_self.tName = data.rpc_tName_change.tName;
 							_self.nameClock = data.rpc_tName_change.clock;
 							// _self.endpoint.transports[_self.tName] = _self;
-							if(!_self.initialised) {
+
+							_self.logger.enabled && _self.logger.log('Name change to [%s] accepted.',_self.tName);
+
+							// Send ack
+							_self.send({
+								rpc_tName_change: {
+									tName: _self.tName,
+									clock: _self.nameClock,
+									ack: true
+								},
+								rpc_dir: _self.endpoint.dir
+							});
+
+							_self.endpoint.transportNameChanged(_self);
+
+							if (!_self.initialised) {
 								_self.initialised = true;
 								res();
 							}
+
 						} else {
-							_self.logger.enabled && _self.logger.log('[%s, clock %s] [%s] Rejecting name change of transport [%s][%s] as [%s] at clock =',_self.endpoint.label,_self.nameClock,data.rpc_tName_change.force?'forced':'', _self.tName,_self.id, data.rpc_tName_change.tName,data.rpc_tName_change.clock);
+
+							/*
+								Our clock is higher, so don't accept.
+								Propose our name instead.
+							*/
+
+							_self.logger.enabled && _self.logger.log('[%s, clock %s] [%s] Rejecting name change of transport [%s][%s] as [%s] at clock =', _self.endpoint.label, _self.nameClock, data.rpc_tName_change.force ? 'forced' : '', _self.tName, _self.id, data.rpc_tName_change.tName, data.rpc_tName_change.clock);
 							_self.send({
 								rpc_tName_change: {
 									tName: _self.tName,
@@ -520,20 +783,50 @@
 					}
 
 					if (data.rpc_msg) {
+						var found = false;
 						Object.keys(data.rpc_msg).forEach((cKey) => {
-							if (_self.endpoint.commands[cKey])
-								_self.endpoint.commands[cKey].recieve(data.rpc_msg[cKey], _self);
+
+							if (_self.endpoint.commands[cKey]){
+								found = true;
+								// _self.logger.enabled && _self.logger.log('[onRecv] Data recvd on [%s][%s]',_self.tName,_self.endpoint.dir, data);
+								_self.endpoint.commands[cKey].recieve(data.rpc_msg[cKey], _self)
+								.catch((e) => {
+									_self.logger.enabled && _self.logger.error('[%s] Failed to respond to [%s] request (registered) from [%s] because -  ', _self.endpoint.label, cKey, _self.tName);
+								});
+							}
+							else{
+								// Create a temp command and process.
+								_self.endpoint.command(cKey).recieve(data.rpc_msg[cKey], _self)
+								.catch((e) => {
+									_self.logger.enabled && _self.logger.error('[%s] Failed to respond to [%s] request (temporary) from [%s] because -  ', _self.endpoint.label, cKey, _self.tName);
+								});
+							}
+
 						});
+
+
 					}
 				}
-			});
+			};
+			_self.onRecv(_self.recvHandler);
+
+			_self.destroy = function(){
+				// _self.logger.enabled && _self.logger.log('[%s] Destroying transport [%s] =', _self.endpoint.label, _self.tName);
+				_self.disabled = true;
+				_self.socket = null;
+
+				if(_self.stopRecv){
+					// _self.logger.enabled && _self.logger.log('[%s] Destroying transport [%s] - stopRecv found =', _self.endpoint.label, _self.tName);
+					_self.stopRecv(_self.recvHandler);
+				}
+			};
 
 			_self.as = function (tName) {
 				// delete _self.endpoint.transports[_self.tName];
 				var prevName = _self.tName;
 				_self.tName = tName;
 				_self.nameClock++;
-				_self.logger.enabled && _self.logger.log('[%s] Sending namechange of transport [%s][%s] to [%s] at clock =',_self.endpoint.label, prevName,tName,_self.id, _self.nameClock);
+				_self.logger.enabled && _self.logger.log('[%s] Sending namechange of transport [%s][%s] to [%s] at clock =', _self.endpoint.label, prevName, tName, _self.id, _self.nameClock);
 				_self.send({
 					rpc_tName_change: {
 						tName: _self.tName,
@@ -541,17 +834,30 @@
 					},
 					rpc_dir: _self.endpoint.dir
 				});
-				// _self.endpoint.transports[tName] = _self;
-				if(!_self.initialised) {
-					_self.initialised = true;
-					res();
-				}
+				// // _self.endpoint.transports[tName] = _self;
+				// if(!_self.initialised) {
+				// 	_self.initialised = true;
+				// 	res();
+				// }
+				return _self;
+			};
+
+			// Triggers an '.as()' function on the remote end of the socket.
+			_self.asRemote = function(){
+				_self.logger.enabled && _self.logger.log('Requesting namechange from remote, at clock =', _self.nameClock);
+				_self.send({
+					rpc_tName_change: {
+						request:true
+					},
+					rpc_dir: _self.endpoint.dir
+				});
+
 				return _self;
 			};
 		});
 
 		_self.endpoint.transports[_self.id] = _self;
-		_self.logger.enabled && _self.logger.log('Added transport [%s][%s] for endpoint [%s][%s]',type,_self.id, endpoint.label, endpoint.dir);
+		_self.logger.enabled && _self.logger.log('Added transport [%s][%s] for endpoint [%s][%s]', type, _self.id, endpoint.label, endpoint.dir);
 		return _self;
 	};
 
@@ -570,7 +876,8 @@
 	transportTypes['socketio'] = function (type, socket) {
 		return {
 			send: (data) => socket.send(JSON.stringify(data)),
-			onRecv: (fn) => socket.on('message', (data) => fn(JSON.parse(data)))
+			onRecv: (fn) => socket.on('message', (data) => fn(JSON.parse(data))),
+			stopRecv: (fn) => socket.removeListener('message', fn)
 		}
 	};
 	transportTypes['websocket'] = function (type, socket) {
@@ -583,19 +890,22 @@
 					);
 				});
 			},
-			onRecv: (fn) => socket.on('message', (data) => fn(JSON.parse(data)))
+			onRecv: (fn) => socket.on('message', (data) => fn(JSON.parse(data))),
+			stopRecv: (fn) => socket.removeListener('message', fn)
 		}
 	};
 	transportTypes['processLocal'] = function (type, socket) {
 		return {
 			send: (data) => socket.emit('message', JSON.stringify(data)),
-			onRecv: (fn) => socket.on('message', (data) => fn(JSON.parse(data)))
+			onRecv: (fn) => socket.on('message', (data) => fn(JSON.parse(data))),
+			stopRecv: (fn) => socket.removeListener('message', fn)
 		}
 	};
 	transportTypes['nodeEELocal'] = function (type, socket) {
 		return {
 			send: (data) => socket.emit('message', JSON.stringify(data)),
-			onRecv: (fn) => socket.on('message', (data) => fn(JSON.parse(data)))
+			onRecv: (fn) => socket.on('message', (data) => fn(JSON.parse(data))),
+			stopRecv: (fn) => socket.removeListener('message', fn)
 		}
 	};
 	transportTypes['processRemote'] = function (type, socket) {
@@ -604,17 +914,19 @@
 				return new Promise((res, rej) => {
 					var s = socket.send(
 						JSON.stringify(data),
-						(e) => e instanceof Error ? rej(e) : (s === true? res(s):rej(s))
+						(e) => e instanceof Error ? rej(e) : (s === true ? res(s) : rej(s))
 					);
 				});
 			},
-			onRecv: (fn) => socket.on('message', (data) => fn(JSON.parse(data)))
+			onRecv: (fn) => socket.on('message', (data) => fn(JSON.parse(data))),
+			stopRecv: (fn) => socket.removeListener('message', fn)
 		}
 	};
 	transportTypes['nodeEERemote'] = function (type, socket) {
 		return {
 			send: (data) => socket.send('message', JSON.stringify(data)),
-			onRecv: (fn) => socket.on('message', (data) => fn(JSON.parse(data)))
+			onRecv: (fn) => socket.on('message', (data) => fn(JSON.parse(data))),
+			stopRecv: (fn) => socket.removeListener('message', fn)
 		}
 	};
 
@@ -671,8 +983,8 @@ module.exports = function (debug) {
 			this.commands = {};
 			this.logger = appLogger.child(this.name);
 
-			this.incoming = new rpcEndpoint(name, 'i', { logger: this.logger});
-			this.outgoing = new rpcEndpoint(name, 'o', { logger: this.logger});
+			this.incoming = new rpcEndpoint(name, 'i', { logger: this.logger });
+			this.outgoing = new rpcEndpoint(name, 'o', { logger: this.logger });
 
 			this.logger.enabled && this.logger.log('Created new Octopus RPC as ', this.name);
 			return this;
@@ -704,20 +1016,25 @@ Incoming (provides):
 `;
 
 		logString += this.incoming.displayString();
-		logString +=`\n\n-------------\nOutgoing (calls):\n\n`;
+		logString += `\n\n-------------\nOutgoing (calls):\n\n`;
 		logString += this.outgoing.displayString();
-		logString +='\n\n------------------------------------------------------------------------------------\n\n';
+		logString += '\n\n------------------------------------------------------------------------------------\n\n';
 
 		console.log(logString);
 	};
 
 	rpc.prototype.over = function (socket, type) {
 		var tasks = [];
-		tasks.push(this.incoming.over(socket, type)
+		tasks.push(
+			this.incoming.over(socket, type)
 			.as(this.name)
-			.initPromise);
-		tasks.push(this.outgoing.over(socket, type)
-			.initPromise);
+			.initPromise
+		);
+		tasks.push(
+			this.outgoing.over(socket, type)
+			.asRemote()
+			.initPromise
+		);
 		return Promise.all(tasks);
 	};
 	rpc.prototype.remove = function (socket) {
