@@ -47,8 +47,6 @@ rpc.command('test/tname').provide(() => {
 */
 
 var tasks = [];
-tasks.push(rpc.over(child1, 'processRemote'));
-tasks.push(rpc.over(child2, 'processRemote'));
 
 console.log('\n\n-----[index] Calling RPC test child:*" before setup--------\n\n');
 hello.call('child:*', { from: 'Parent' })
@@ -59,6 +57,12 @@ hello.call('child:*', { from: 'Parent' })
 	});
 
 var i = 0;
+
+console.log('\n\n----- Setting up --------\n\n');
+
+tasks.push(rpc.over(child1, 'processRemote'));
+tasks.push(rpc.over(child2, 'processRemote'));
+
 Promise.all(tasks)
 	.then(() => {
 		console.log('\n\n-----[index] Calling RPC "test child:*" after setup--------\n\n');

@@ -82,7 +82,7 @@
 								fail with a timeout
 		*/
 
-		if (!_self.endpoint.transports[tid]) {
+		if (tid === '' || !_self.endpoint.transports[tid]) {
 			_self.sendLogger.enabled && _self.sendLogger.log('\n\n[sendToID] transport to tid[%s] does not exist. Taking corrective action... \n', tid);
 
 
@@ -100,7 +100,7 @@
 					// Wait for new transport with given name to setup
 					.then(() => _self.endpoint.addTransportNameChangeHook(pTransName))
 
-					// Call this recursively and try to resend
+					// Once hook fires, call this recursively and try to resend
 					.then((t) => this.sendToID(t.id, msg, mode, pTransName))
 
 					// Reject if it fails (worst case situation)
@@ -207,52 +207,62 @@
 
 	/*
 		Data can be a value or a function.
-		If its a function, it will be evaluated for every new transport and passed the transport name & index as parameters.
+		If its a function, it will be evaluated for every new transport
+
+		and passed params as:
+			1. the transport tName, index - if found.
+			2. null, null - if no transports are found, and it goes to waiting
+
+		//TODO - improve consistency in params passed to data function.
+
 	*/
 	rpcCommand.prototype.call = function (namespace, data, mode) {
 		var _self = this;
 		var tName;
-		namespace = new Namespace(namespace);
 		var tasks = [];
 		var evaluate = false;
 
-		var msg = {
-			msgID: _self.autoID(),
-			msgType: MESSAGETYPES.request,
-			reqData: data,
-		};
 
 		if (typeof data === 'function') {
 			evaluate = true;
 		}
 
+		// Send to all transports that match the namespace
+		var tasks = _self.endpoint.findTransportsByNamespace(namespace, { initialised: true })
+			.map((t, i) => {
+				var msg = {
+					msgID: _self.autoID(),
+					msgType: MESSAGETYPES.request,
+					reqData: evaluate === true ? data(t.tName, i) : data,
+				};
 
-		Object.keys(_self.endpoint.transports)
-			.forEach(function (tid, index) {
-				_self.sendLogger.enabled && _self.sendLogger.log('Scanning for namespace on transport [%s] as \n', tid);
+				_self.sendLogger.enabled && _self.sendLogger.log('Transport [%s] is valid. Attempting to send', t.id);
 
-				tName = _self.endpoint.transports[tid].tName;
-
-				if (_self.endpoint.transports[tid].initialised === true && namespace.test(tName)) {
-					if (evaluate === true)
-						msg.reqData = data(_self.endpoint.transports[tid].tName, index);
-					_self.sendLogger.enabled && _self.sendLogger.log('Transport [%s] is valid. Attempting to send', tid);
-
-					// NOTE - adding tName at the end as identification in case of tName errors. See .sendToID() comments.
-					tasks.push(_self.sendToID(tid, msg, mode, tName));
-				}
+				return _self.sendToID(t.id, msg, mode, t.tName);
 			});
 
-		if (tasks.length > 0)
-			return Promise.all(tasks);
+
+		// If transports were not found,
+		// hook & wait for the first valid transport that connects
+		if (tasks.length == 0){
+
+			var msg = {
+				msgID: _self.autoID(),
+				msgType: MESSAGETYPES.request,
+				reqData: evaluate === true ? data(null, null) : data,
+			};
+
+			_self.sendLogger.enabled && _self.sendLogger.log('No transports found for [%s]. Waiting', namespace);
+
+			return Promise.all([_self.sendToID('', msg, mode, namespace)]);
+
+		}
+
+		// Otherwise, wait till all messages have been sent & resolve.
 		else
-			return Promise.resolve([{
-				sent: false,
-				status: false,
-				transport: '',
-				command: _self.name,
-				response: 'no transports added'
-			}]);
+			return Promise.all(tasks);
+
+
 	};
 
 	// rpcCommand.prototype.call = function (namespaceString, data) {

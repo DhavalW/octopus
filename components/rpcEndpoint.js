@@ -105,13 +105,31 @@
 		}
 	};
 
-	// Internal hook called by transport, to signal a name change
+	/*
+	 	Internal hook called by transport, to signal a name change
+		& Automatically cleans up after it executes once (resolve or reject).
+	*/
 	rpcEndpoint.prototype.transportNameChanged = function (transport) {
 
-		// Run past all registered hooks & see if any are registered for this tName
+		/*
+			NOTE - Including both exact & NS match, for performance.
+			this ensures that any exact match is quickly detected and resolved first,
+			causing one less regex match transaction (more expensive) in the subsequent routine.
+		*/
+
+		// Run all hooks whose namespace exactly matches transport's tName
 		if (this.nameChangeHooks[transport.tName]) {
-			this.nameChangeHooks[transport.tName].forEach(x => x(transport));
+			this.nameChangeHooks[transport.tName].hooks.forEach(x => x(transport));
+			delete this.nameChangeHooks[transport.tName];
 		}
+
+		// Also, run all hooks whose namespace includes the transport's tName
+		Object.keys(this.nameChangeHooks).map(k => {
+			if (this.nameChangeHooks[k] && this.nameChangeHooks[k].ns.test(transport.tName)) {
+				this.nameChangeHooks[k].hooks.forEach(x => x(transport));
+				delete this.nameChangeHooks[k];
+			}
+		})
 	};
 
 	/*
@@ -119,29 +137,36 @@
 			1> resolves when appropriate name change occurs
 			2> rejects if timeout happens
 
-		& Automatically cleans up after it executes once (resolve or reject).
+		& Automatically cleans up if it rejects (times out).
+		Clean up on resolve is handled by triggering routine declared above.
 	*/
 	rpcEndpoint.prototype.addTransportNameChangeHook = function (tName, timeout) {
 		if (!this.nameChangeHooks[tName])
-			this.nameChangeHooks[tName] = [];
+			this.nameChangeHooks[tName] = {
+				ns: new Namespace(tName),
+				hooks: []
+			};
 
 		var p = new Promise((res, rej) => {
 			var fn = (transport) => {
 				if (res && !p.done) {
 					p.done = true;
-					var i = this.nameChangeHooks[tName].findIndex(x => x == fn);
-					this.nameChangeHooks[tName].splice(i, 1);
+					// var i = this.nameChangeHooks[tName].hooks.findIndex(x => x == fn);
+					// this.nameChangeHooks[tName].hooks.splice(i, 1);
 					res(transport);
 				}
 			};
 
-			this.nameChangeHooks[tName].push(fn);
+			this.nameChangeHooks[tName].hooks.push(fn);
 
 			setTimeout(() => {
 				if (rej && !p.done) {
 					p.done == true;
-					var i = this.nameChangeHooks[tName].findIndex(x => x == fn);
-					this.nameChangeHooks[tName].splice(i, 1);
+					var i = this.nameChangeHooks[tName].hooks.findIndex(x => x == fn);
+					this.nameChangeHooks[tName].hooks.splice(i, 1);
+					if (this.nameChangeHooks[tName].hooks.length == 0) {
+						delete this.nameChangeHooks[tName];
+					}
 					rej();
 				}
 			}, timeout || 5000);
@@ -164,6 +189,7 @@
 		return new rpcCommand(name, this, { logger: this.logger });
 	};
 
+	// Returns the first transport that's an exact match by tName
 	rpcEndpoint.prototype.findTransportByName = function (tName) {
 		var tKey = Object.keys(this.transports).find(x => this.transports[x].tName == tName);
 
@@ -171,6 +197,23 @@
 			return this.transports[tKey];
 		else
 			return null;
+	};
+
+	// Returns all transports that fall within a given namespace
+	rpcEndpoint.prototype.findTransportsByNamespace = function (namespace, options) {
+		options = options || {}
+		var ns = new Namespace(namespace);
+		var transports = Object.keys(this.transports)
+			.map(x => this.transports[x]);
+
+
+		if (options.intialised === true) {
+			transports = transports.filter(t => t.initialised === true)
+		}
+
+		return transports
+			.filter(t => ns.test(t.tName))
+
 	};
 
 	/* ----------------------------------------------------------- */
